@@ -1,0 +1,24 @@
+{
+  "development": {
+    "username": "postgres",
+    "password": "JobSift@cnpmnc",
+    "database": "postgres",
+    "host": "db.yejwtqvhwplmyzushalg.supabase.co",
+    "dialect": "postgres",
+    "migrationsPath": "migrations"
+  },
+  "test": {
+    "username": "postgres",
+    "password": "JobSift@cnpmnc",
+    "database": "postgres",
+    "host": "db.yejwtqvhwplmyzushalg.supabase.co",
+    "dialect": "postgres"
+  },
+  "production": {
+    "username": "postgres",
+    "password": "JobSift@cnpmnc",
+    "database": "postgres",
+    "host": "db.yejwtqvhwplmyzushalg.supabase.co",
+    "dialect": "postgres"
+  }
+}
