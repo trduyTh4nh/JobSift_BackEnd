@@ -49,8 +49,45 @@ app.use(bodyParser.urlencoded({ extended: false }))
 //     res.json(req.body);
 //     // Rest of your route handling logic
 // });
-
-
+app.post('/updateUser', async (req,res) => {
+    const user = req.body;
+    post.updateUser(user).then((e) => {
+        res.status(200).send({code: 200, rowsUpdated: e})
+        console.log('[200]: Update người dùng thành công.')
+    }).catch((e) => {
+        console.log('error')
+        if(e == 404){
+            res.status(404).send({code: 404, error: 'No user found'})
+        }
+    })
+})
+app.post('/favourite', async (req,res) => {
+    const {id_user} = req.body
+    var date = new Date()
+    post.getFavourite(id_user).then((e) => {
+        console.log(`[200 - ${date}]: Lấy post yêu thích thành công.`)
+        res.status(200).send(e)
+    }).catch((error) => {
+        if(error == 404){
+            res.status(404).send({code: 404, message: 'Unable to find posts.'})
+            return
+        }
+        if(error == 401){
+            console.log(`[401 - ${date}]: Unauthorized access to Favourites`)
+            res.status(401).send({code: 401, message: 'Unauthorized to view response, please login.'})
+            return
+        }
+        console.log(`[500 - ${date}]: Lỗi database.`)
+        res.status(500).send({code: 500, message: 'Internal server error.'})
+    })
+})
+app.post('/addfavourite', async (req,res) => {
+    const {id_user, id_post} = req.body;
+    console.log('[debug]: '+ id_user + ' ' + id_post)
+    post.postFavourite(id_user, id_post).then(() => {
+        res.status(200).send(req.body)
+    })
+}) 
 app.post("/adduser", async (req, res) => {
    
     const { email, password, phone, full_name, profile_picture, diamond_count } = req.body;
@@ -139,7 +176,7 @@ app.post('/login', async (req, res) => {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
   
-      res.status(200).json({ message: 'Login successful' });
+      res.status(200).json({ message: 'Login successful', user: user });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: 'Internal Server Error' });
