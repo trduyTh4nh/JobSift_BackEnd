@@ -56,7 +56,7 @@ app.post('/updateUser', async (req,res) => {
         res.status(200).send({code: 200, rowsUpdated: e})
         console.log('[200]: Update người dùng thành công.')
     }).catch((e) => {
-        console.log('error')
+        console.log('error' + e)
         if(e == 404){
             res.status(404).send({code: 404, error: 'No user found'})
         }
@@ -230,29 +230,28 @@ app.get('/upfeedback/:idpost', async (req, res) => {
     try {
         const fbs = await db.manyOrNone(`SELECT fb.* FROM feedback fb, post ps WHERE fb.idpost = ps.id_post and idpost = ${idPost}`);
         if (!fbs || fbs.length === 0) {
-            res.status(401).json({ error: 'No data found' });
+            res.status(404).json({ error: 'No data found' });
+            return
         }
         res.status(200).json({ fbs: fbs });
 
     }
     catch (error) {
-        console.error(error)
+        console.error("Feedback"+error)
         res.status(500).json({ error: 'Internal Server Error' })
     }
 })
 
 app.get('/upfeedback/getrate/:idpost', async (req, res) => {
     const idpost = req.params.idpost
-
     try {
         const rate = await db.manyOrNone(`SELECT sum(numberstar) as start, count(iduser) as user FROM rate WHERE id_post = ${idpost}`);
-        if (!rate) {
-            res.status(401).json({ error: 'No data found' });
-        }
+        
         res.status(200).json({ rate: rate })
+        console.log(JSON.stringify(rate))
     }
     catch (error) {
-        console.error(error)
+        console.error('error')
         res.status(500).json({ error: 'Internal Server Error' })
     }
 })
@@ -288,13 +287,15 @@ app.post('/ntd/:idntd', async (req, res) => {
     try {
         const ntd = await db.oneOrNone(`SELECT dn.* FROM nha_tuyen_dung td, doanh_nghiep dn WHERE td.id_dn = dn.id_dn AND id_ntd = ${idNtd}`)
         if (!ntd) {
-            return res.status(401).json({ error: 'Lỗi data' })
+            res.status(404).json({ error: 'Lỗi data' })  
         }
 
         res.status(200).json({ ntd: ntd })
     }
     catch (error) {
-        console.log(error)
+        console.log(
+            'errpr'
+        )
         res.status(500).json({ error: 'Internal Server Error' })
     }
 })
