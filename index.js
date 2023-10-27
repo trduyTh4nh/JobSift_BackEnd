@@ -41,6 +41,15 @@ app.use(bodyParser.json())
 
 app.use(bodyParser.urlencoded({ extended: false }))
 
+app.post('/cvcount', async (req, res) => {
+    var user = req.body;
+    post.getCVCountFromUser(user.id_user).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR AT /cvcount ${e}`)
+        res.status(500).send({error: 500, msg: 'ERROR AT /cvcount', callStack: e})
+    })
+})
 
 app.post('/apply', async (req, res) => {
     var application = req.body;
@@ -53,12 +62,21 @@ app.post('/apply', async (req, res) => {
 })
 app.post('/application', async (req, res) => {
     var {id_post, id_user} = req.body
-    post.getApplyWithIdPostIdUser(id_post, id_user).then(e => {
-        res.status(200).send(e[0])
-    }).catch(e => {
-        console.log(`ERROR AT /application ${e}`)
-        res.status(500).send({error: 500, msg: 'ERROR AT /application', callStack: e})
-    })
+    if(!id_post){
+        post.getApplyUser(id_user).then(e => {
+            res.status(200).send(e)
+        }).catch(e => {
+            console.log(`ERROR AT /application ${e}`)
+            res.status(500).send({error: 500, msg: 'ERROR AT /application', callStack: e})
+        })
+    } else {
+        post.getApplyWithIdPostIdUser(id_post, id_user).then(e => {
+            res.status(200).send(e[0])
+        }).catch(e => {
+            console.log(`ERROR AT /application ${e}`)
+            res.status(500).send({error: 500, msg: 'ERROR AT /application', callStack: e})
+        })
+    }
 })
 app.post('/getcv', async (req, res) => {
     var {id_post, id_user} = req.body

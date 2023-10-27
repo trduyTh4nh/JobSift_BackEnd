@@ -148,6 +148,32 @@ const getApplyWithIdPostIdUser = (id_post, id_user) => {
     })
 }
 
+const getApplyUser = (id_user) => {
+    return new Promise((resolve, reject) => {
+        pool.query(`SELECT *
+        FROM don_ung_tien
+        WHERE id_user = ${id_user}`, (error, result) => {
+            if(error){
+                console.log(error)
+                reject(error)
+            }
+            resolve(result.rows)  
+        })
+    })
+}
+const getCVCountFromUser = (id_user) => {
+    return new Promise((resolve, reject) => {
+        pool.query(`SELECT COUNT(c.*) as cv_count
+        FROM users u, ung_vien uv, cv c
+        WHERE uv.id_user = u.id_user AND c.id_ungvien = uv.id_ungvien AND uv.id_user = ${id_user}`, (error, result) => {
+            if(error){
+                console.log(error)
+                reject(error)
+            }
+            resolve(result.rows)  
+        })
+    })
+}
 module.exports = {
     getPost,
     postFavourite,
@@ -158,5 +184,7 @@ module.exports = {
     checkUngVien,
     apply,
     getCV,
-    getApplyWithIdPostIdUser
+    getApplyWithIdPostIdUser,
+    getApplyUser,
+    getCVCountFromUser
 }
