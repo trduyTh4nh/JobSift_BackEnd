@@ -8,21 +8,19 @@ const pool = new Pool({
 })
 const getPost = () => {
     return new Promise((resolve, reject) => {
-        pool.query('SELECT * FROM post', (error, result) => {
-            if(error){
-                console.log('error: ' + error )
+        pool.query('SELECT * FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd WHERE p.id_ntd = ntd.id_ntd and ntd.id_dn = dn.id_dn', (error, result) => {
+            if (error) {
+                console.log('error: ' + error)
                 reject(error)
             }
             resolve(result.rows)
         })
 
-
- 
     })
 }
 const updateUser = async (user) => {
     return new Promise((resolve, reject) => {
-        if(!user.id_user){
+        if (!user.id_user) {
             reject(404)
             return
         }
@@ -31,28 +29,28 @@ const updateUser = async (user) => {
             set email = '${user.email}', phone = '${user.phone}', full_name = '${user.full_name}', gioitinh = '${user.gioitinh}', diachi='${user.diachi}', ngaysinh='${user.ngaysinh}'
             WHERE id_user = ${user.id_user};
         `, (error, result) => {
-            if(error){
+            if (error) {
                 reject(error)
                 return
             }
-            resolve({code: 200, message: `Succesfully edited ${result.rowCount}`})
+            resolve({ code: 200, message: `Succesfully edited ${result.rowCount}` })
         })
     })
 }
 const getFavourite = (id_user) => {
     return new Promise((resolve, reject) => {
-        if(id_user === undefined){
+        if (id_user === undefined) {
             reject(401)
             return
         }
         pool.query(`SELECT p.*, yt.id_post_yt
         FROM post_yeu_thich yt, post p
         WHERE yt.id_job = p.id_post AND yt.id_user = ${id_user}`, (error, result) => {
-            if(error){
+            if (error) {
                 console.log(error)
                 reject(error)
             }
-            if(result.rows.length == 0){
+            if (result.rows.length == 0) {
                 reject(404)
             }
             resolve(result.rows)
@@ -61,17 +59,17 @@ const getFavourite = (id_user) => {
 }
 const postFavourite = (id_user, id_post) => {
     return new Promise((resolve, reject) => {
-        pool.query(`INSERT INTO post_yeu_thich (id_user, id_job) VALUES (${id_user}, ${id_post});`, (error,result) => {
-            if(error){
+        pool.query(`INSERT INTO post_yeu_thich (id_user, id_job) VALUES (${id_user}, ${id_post});`, (error, result) => {
+            if (error) {
                 console.log(error)
                 reject(error)
             }
-            resolve({message: 'success'})
+            resolve({ message: 'success' })
         })
     })
 }
 const setPost = (post) => {
-    
+
 }
 module.exports = {
     getPost,
