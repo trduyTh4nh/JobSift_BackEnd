@@ -41,14 +41,92 @@ app.use(bodyParser.json())
 
 app.use(bodyParser.urlencoded({ extended: false }))
 
+app.post('/cvcount', async (req, res) => {
+    var user = req.body;
+    post.getCVCountFromUser(user.id_user).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR AT /cvcount ${e}`)
+        res.status(500).send({error: 500, msg: 'ERROR AT /cvcount', callStack: e})
+    })
+})
 
-// app.post('/test', (req, res) => {
-//     console.log('Request Body:', req.body);
-//     console.log('Content-Type:', req.get('Content-Type'));
-//     console.log(req.body);
-//     res.json(req.body);
-//     // Rest of your route handling logic
-// });
+
+app.post('/apply', async (req, res) => {
+    var application = req.body;
+    post.apply(application).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR AT /apply ${e}`)
+        res.status(500).send({error: 500, msg: 'ERROR AT /apply', callStack: e})
+    })
+})
+app.post('/application', async (req, res) => {
+    var {id_post, id_user} = req.body
+    if(!id_post){
+        post.getApplyUser(id_user).then(e => {
+            res.status(200).send(e)
+        }).catch(e => {
+            console.log(`ERROR AT /application ${e}`)
+            res.status(500).send({error: 500, msg: 'ERROR AT /application', callStack: e})
+        })
+    } else {
+        post.getApplyWithIdPostIdUser(id_post, id_user).then(e => {
+            res.status(200).send(e[0])
+        }).catch(e => {
+            console.log(`ERROR AT /application ${e}`)
+            res.status(500).send({error: 500, msg: 'ERROR AT /application', callStack: e})
+        })
+    }
+})
+app.post('/getcv', async (req, res) => {
+    var {id_post, id_user} = req.body
+    console.log(JSON.stringify(req.body))
+    post.getApplyWithIdPostIdUser(id_post, id_user).then(e => {
+        const id_cv = e[0].idcv
+        post.getCV(id_cv).then(e => {
+            res.status(200).send(e)
+        }).catch(e => {
+            console.log(`ERROR AT /apply ${e}`)
+            res.status(500).send({error: 500, msg: 'ERROR AT /apply', callStack: e})
+        })
+    }).catch(e => {
+        console.log(`ERROR AT /apply ${e}`)
+            res.status(500).send({error: 500, msg: 'ERROR AT checking ungvien', callStack: e})
+    })
+    
+})
+app.post('/createcv', async (req, res) => {
+    var cv = req.body;
+    console.log(JSON.stringify(cv))
+    post.checkUngVien(cv.id_ungvien).then((r) => {
+        if(r.length == 0){
+            res.status(401).send({error: 401, message: 'ERROR AT checkUngVien(): User is not a candidate.'})
+            return
+        }
+        cv = {
+            ...cv,
+            id_ungvien: r[0].id_ungvien
+        }
+        console.log(JSON.stringify(r))
+        post.addCV(cv).then((e) => {
+            post.getLatestCV().then((e) => {
+                res.status(200).send(e)
+            }).catch((e) => {
+                console.log(`ERROR AT /createcv [in data fetching process.]`)
+                res.status(500).send({error: 500, msg: 'ERROR AT /createcv [in data fetching process.]', callStack: e})
+            })
+        }).catch((e) => {
+            console.log(`ERROR AT /createcv ${e}`)
+            res.status(500).send({error: 500, msg: 'ERROR AT /createcv', callStack: e})
+        })
+    }).catch(e => {
+        console.log(e)
+        res.status(500).send({error: 500, msg: 'ERROR AT checkUngVien', callStack: e})
+    })
+    
+})
+
 
 app.post('/updateUser', async (req, res) => {
     const user = req.body;
@@ -110,9 +188,7 @@ app.post('/addfavourite', async (req, res) => {
 
 
 app.post(`/getpostby`, async (req, res) => {
-
     const { id_post } = req.body
-
     try {
         const fecthPost = await db.oneOrNone(`SELECT * FROM post WHERE id_post = ${id_post}`)
         if (!fecthPost) {

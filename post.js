@@ -71,9 +71,118 @@ const postFavourite = (id_user, id_post) => {
 const setPost = (post) => {
 
 }
+const addCV = (cv) => {
+    return new Promise((resolve, reject) => {
+            pool.query(`INSERT INTO cv (file, id_ungvien) values ('${cv.file}', ${cv.id_ungvien})`, (error, result) => {
+                if(error){
+                    console.log(error)
+                    reject(error)
+                }
+                resolve(200)                
+            })
+    })
+}
+const checkUngVien = (id_user) => {
+   
+    return new Promise((resolve, reject) => {
+        pool.query(`SELECT * FROM ung_vien WHERE id_user = ${id_user};`, (error, result) => {
+            if(error){
+                console.log(error)
+                reject(error)
+            }
+            resolve(result.rows)  
+        })
+    })
+}
+const apply = (application) => {
+    return new Promise((resolve, reject) => {
+        pool.query(`INSERT INTO don_ung_tien (status, idcv, id_post, id_user) values (0, ${application.idcv}, ${application.id_post}, ${application.id_user});`, (e,r) => {
+            if(e){
+                reject(e)
+            }
+            resolve({status: '200 success', rowsAffected: r.rowCount})
+        })
+    })
+}
+const getLatestCV = () => {
+    return new Promise((resolve, reject) => {
+        pool.query(`SELECT id_cv
+        FROM cv
+        ORDER BY id_cv DESC
+        LIMIT 1`, (error, result) => {
+            if(error){
+                console.log(error)
+                reject(error)
+            }
+            resolve(result.rows)  
+        })
+    })
+}
+const getCV = (id) => {
+    return new Promise((resolve, reject) => {
+        pool.query(`SELECT *
+        FROM cv
+        WHERE id_cv = ${id}`, (error, result) => {
+            if(error){
+                console.log(error)
+                reject(error)
+            }
+            resolve(result.rows)  
+        })
+    })
+}
+const getApplyWithIdPostIdUser = (id_post, id_user) => {
+    console.log(id_post + ' ' + id_user)
+    return new Promise((resolve, reject) => {
+        pool.query(`SELECT *
+        FROM don_ung_tien
+        WHERE id_user = ${id_user} AND id_post = ${id_post}`, (error, result) => {
+            if(error){
+                console.log(error)
+                reject(error)
+            }
+            resolve(result.rows)  
+        })
+    })
+}
+
+const getApplyUser = (id_user) => {
+    return new Promise((resolve, reject) => {
+        pool.query(`SELECT *
+        FROM don_ung_tien
+        WHERE id_user = ${id_user}`, (error, result) => {
+            if(error){
+                console.log(error)
+                reject(error)
+            }
+            resolve(result.rows)  
+        })
+    })
+}
+const getCVCountFromUser = (id_user) => {
+    return new Promise((resolve, reject) => {
+        pool.query(`SELECT COUNT(c.*) as cv_count
+        FROM users u, ung_vien uv, cv c
+        WHERE uv.id_user = u.id_user AND c.id_ungvien = uv.id_ungvien AND uv.id_user = ${id_user}`, (error, result) => {
+            if(error){
+                console.log(error)
+                reject(error)
+            }
+            resolve(result.rows)  
+        })
+    })
+}
 module.exports = {
     getPost,
     postFavourite,
     getFavourite,
-    updateUser
+    updateUser,
+    addCV,
+    getLatestCV,
+    checkUngVien,
+    apply,
+    getCV,
+    getApplyWithIdPostIdUser,
+    getApplyUser,
+    getCVCountFromUser
 }
