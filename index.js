@@ -7,6 +7,7 @@ const post = require('./post');
 const pgp = require('pg-promise')();
 const userSignup = require('./models/user');
 const { errors, as } = require('pg-promise');
+const { stat } = require('fs');
 const db = pgp({
     host: 'localhost',
     port: 5432,
@@ -24,6 +25,7 @@ const db = pgp({
 
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', 'http://localhost:19006');
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Access-Control-Allow-Headers');
     next();
@@ -32,14 +34,175 @@ app.use((req, res, next) => {
 // app.use(express.json());
 // app.use('/user', userRouter);
 app.use(bodyParser.json())
-
+const server = require('http').Server(app)
+const io = require('socket.io')(server, {
+    cors: {
+        origin: "http://localhost:5173",
+        methods: ["GET", "POST"],
+        allowedHeaders: ["my-custom-header"],
+        credentials: true
+    }
+})
 // app.use(userSignup)
 
 // app.use(bodyParser.text({
 //     type: 'text/plain'
 // }));
-
+io.on('connection', (socket) => {
+    console.log(`Socket: ${socket.id}`)
+    socket.emit('id', socket.id)
+    socket.on('newMsg', (body) => {
+        io.sockets.emit('newMsg', { body: body, id: socket.id })
+    })
+})
+io.listen(3002)
+app.post('/diamond/:id', (req, res) => {
+    const id = req.params.id
+    console.log(req.params)
+    post.getDiamondCount(id).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR in /diamond/${id}: ${e}`)
+        res.status(500).send({ status: 500, at: `ERROR in /diamond/${id}`, e: e })
+    })
+})
+app.post('/applicationuser', (req, res) => {
+    const bd = req.body
+    post.getApplication(bd).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR in /applicationuser: ${e}`)
+        res.status(500).send({ status: 500, at: '/applicationuser', e: e })
+    })
+})
+app.post('/createchat', (req, res) => {
+    const bd = req.body
+    post.checkUngVien(bd.id_user).then(e => {
+        console.log(`[DEBUG @ /createchat @ checkUngVien] ${JSON.stringify(e)}`)
+        const newBD = { ...bd, id_user: e[0].id_ungvien }
+        console.log(`[DEBUG @ /createchat @ checkUngVien] ${JSON.stringify(newBD)}`)
+        post.checkChat(newBD).then(e => {
+            if (!e) {
+                post.createChat(newBD).then(f => {
+                    res.status(200).send(f)
+                }).catch(g => {
+                    console.log(`ERROR in /createchat @ createChat: ${g}`)
+                    res.status(500).send({ status: 500, at: '/createchat @ createchat', e: e })
+                })
+            } else {
+                console.log('Already exist')
+                post.getntdFromChat(e[0]).then(h => {
+                    res.status(200).send(h)
+                }).catch(i => {
+                    console.log(`ERROR in /createchat @ getntdFromChat: ${i}`)
+                    res.status(500).send({ status: 500, at: '/createchat @ getntdFromChat', e: i })
+                })
+            }
+        }).catch(e => {
+            console.log(`ERROR in /createchat @ checkChat: ${e}`)
+            res.status(500).send({ status: 500, at: '/createchat @ checkChat', e: e })
+        })
+    }).catch(e => {
+        console.log(`ERROR in /createchat @ checkUngVien: ${e}`)
+        res.status(500).send({ status: 500, at: '/createchat @ checkUngVien', e: e })
+    })
+})
+app.post('/ungvien', (req, res) => {
+    post.getUV().then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR in /ungvien: ${e}`)
+        res.status(500).send({ status: 500, at: '/ungvien', e: e })
+    })
+})
+app.post('/ntd', (req, res) => {
+    post.getAllNTD().then(e => {
+        console.log('sent')
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR in /ntd: ${e}`)
+        res.status(500).send({ status: 500, at: '/ntd', e: e })
+    })
+})
 app.use(bodyParser.urlencoded({ extended: false }))
+app.post('/postmsg', (req, res) => {
+    const bd = req.body
+    post.postMessage(bd).then(e => {
+        res.status(200).send({ message: 'Success' })
+    }).catch(e => {
+        console.log(`ERROR in /postmsg: ${e}`)
+        res.status(500).send({ status: 500, at: '/postmsg', e: e })
+    })
+})
+app.post('/getmsg', (req, res) => {
+    const bd = req.body
+    post.getChat(bd).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR in /getmsg: ${e}`)
+        res.status(500).send({ status: 500, at: '/getmsg', e: e })
+    })
+})
+
+app.post('/chat', (req, res) => {
+    const bd = req.body
+    post.checkUngVien(bd.id_user).then(e => {
+        console.log(e)
+        post.getChat(e[0]).then(e => {
+            res.status(200).send(e)
+        }).catch(e => {
+            console.log(`ERROR in /chat @ {getChat}: ${e}`)
+            res.status(500).send({ status: 500, at: '/addfavourite & getChat', e: e })
+        })
+    }).catch(e => {
+        console.log(`ERROR in /chat @ {checkUngVien}: ${e}`)
+        res.status(500).send({ status: 500, at: '/addfavourite & checkUngVien', e: e })
+    })
+})
+
+app.post('/getntd', (req, res) => {
+    const bd = req.body
+    post.getNTD(bd).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR in /getntd: ${e}`)
+        res.status(500).send({ status: 500, at: '/getntd', e: e })
+    })
+})
+
+app.post('/getpostfavourite', (req, res) => {
+    const bd = req.body
+    post.isExistInFavourite(bd).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR in /getpostfavourite: ${e}`)
+        res.status(500).send({ status: 500, at: '/getpostfavourite & removeFavourite', e: e })
+    })
+})
+
+app.post('/addfavourite', (req, res) => {
+    const bd = req.body
+    post.isExistInFavourite(bd).then(e => {
+        if (e) {
+            post.removeFavourite(bd).then(e => {
+                res.status(200).send({ msg: 'Success remove favourite' })
+            }).catch(e => {
+                console.log(`ERROR in /addfavourite @ {removeFavourite}: ${e}`)
+                res.status(500).send({ status: 500, at: '/addfavourite & removeFavourite', e: e })
+            })
+        } else {
+            post.addFavourite(bd).then(e => {
+                res.status(200).send({ msg: 'Success add favourite' })
+            }).catch(e => {
+                console.log(`ERROR in /addfavourite @ {addFavourite}: ${e}`)
+                res.status(500).send({ status: 500, at: '/addfavourite & addFavourite', e: e })
+            })
+        }
+    }).catch(e => {
+        console.log(`ERROR in /addfavourite @ {isExsistInFavourite}: ${e}`)
+        res.status(500).send({ status: 500, at: '/addfavourite & isExsistInFavourite', e: e })
+    })
+})
 
 app.post('/cvcount', async (req, res) => {
     var user = req.body;
@@ -47,7 +210,7 @@ app.post('/cvcount', async (req, res) => {
         res.status(200).send(e)
     }).catch(e => {
         console.log(`ERROR AT /cvcount ${e}`)
-        res.status(500).send({error: 500, msg: 'ERROR AT /cvcount', callStack: e})
+        res.status(500).send({ error: 500, msg: 'ERROR AT /cvcount', callStack: e })
     })
 })
 
@@ -58,29 +221,29 @@ app.post('/apply', async (req, res) => {
         res.status(200).send(e)
     }).catch(e => {
         console.log(`ERROR AT /apply ${e}`)
-        res.status(500).send({error: 500, msg: 'ERROR AT /apply', callStack: e})
+        res.status(500).send({ error: 500, msg: 'ERROR AT /apply', callStack: e })
     })
 })
 app.post('/application', async (req, res) => {
-    var {id_post, id_user} = req.body
-    if(!id_post){
+    var { id_post, id_user } = req.body
+    if (!id_post) {
         post.getApplyUser(id_user).then(e => {
             res.status(200).send(e)
         }).catch(e => {
             console.log(`ERROR AT /application ${e}`)
-            res.status(500).send({error: 500, msg: 'ERROR AT /application', callStack: e})
+            res.status(500).send({ error: 500, msg: 'ERROR AT /application', callStack: e })
         })
     } else {
         post.getApplyWithIdPostIdUser(id_post, id_user).then(e => {
             res.status(200).send(e[0])
         }).catch(e => {
             console.log(`ERROR AT /application ${e}`)
-            res.status(500).send({error: 500, msg: 'ERROR AT /application', callStack: e})
+            res.status(500).send({ error: 500, msg: 'ERROR AT /application', callStack: e })
         })
     }
 })
 app.post('/getcv', async (req, res) => {
-    var {id_post, id_user} = req.body
+    var { id_post, id_user } = req.body
     console.log(JSON.stringify(req.body))
     post.getApplyWithIdPostIdUser(id_post, id_user).then(e => {
         const id_cv = e[0].idcv
@@ -88,20 +251,20 @@ app.post('/getcv', async (req, res) => {
             res.status(200).send(e)
         }).catch(e => {
             console.log(`ERROR AT /apply ${e}`)
-            res.status(500).send({error: 500, msg: 'ERROR AT /apply', callStack: e})
+            res.status(500).send({ error: 500, msg: 'ERROR AT /apply', callStack: e })
         })
     }).catch(e => {
         console.log(`ERROR AT /apply ${e}`)
-            res.status(500).send({error: 500, msg: 'ERROR AT checking ungvien', callStack: e})
+        res.status(500).send({ error: 500, msg: 'ERROR AT checking ungvien', callStack: e })
     })
-    
+
 })
 app.post('/createcv', async (req, res) => {
     var cv = req.body;
     console.log(JSON.stringify(cv))
     post.checkUngVien(cv.id_ungvien).then((r) => {
-        if(r.length == 0){
-            res.status(401).send({error: 401, message: 'ERROR AT checkUngVien(): User is not a candidate.'})
+        if (r.length == 0) {
+            res.status(401).send({ error: 401, message: 'ERROR AT checkUngVien(): User is not a candidate.' })
             return
         }
         cv = {
@@ -114,17 +277,17 @@ app.post('/createcv', async (req, res) => {
                 res.status(200).send(e)
             }).catch((e) => {
                 console.log(`ERROR AT /createcv [in data fetching process.]`)
-                res.status(500).send({error: 500, msg: 'ERROR AT /createcv [in data fetching process.]', callStack: e})
+                res.status(500).send({ error: 500, msg: 'ERROR AT /createcv [in data fetching process.]', callStack: e })
             })
         }).catch((e) => {
             console.log(`ERROR AT /createcv ${e}`)
-            res.status(500).send({error: 500, msg: 'ERROR AT /createcv', callStack: e})
+            res.status(500).send({ error: 500, msg: 'ERROR AT /createcv', callStack: e })
         })
     }).catch(e => {
         console.log(e)
-        res.status(500).send({error: 500, msg: 'ERROR AT checkUngVien', callStack: e})
+        res.status(500).send({ error: 500, msg: 'ERROR AT checkUngVien', callStack: e })
     })
-    
+
 })
 
 
@@ -576,10 +739,6 @@ app.get('/', (request, result) => {
             result.status(500).send(e);
         });
 });
-
-
-
-
 
 
 app.listen(port, () => {
