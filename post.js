@@ -6,6 +6,17 @@ const pool = new Pool({
     password: '1234',
     port: 5432
 })
+const setKC = (bd) => {
+    return new Promise((res, rej) => {
+        pool.query(`UPDATE users SET diamond_count = ${bd.diamond_count} WHERE id_user = ${bd.id_user}`, (e, r) => {
+            if(e){
+                rej(e)
+                return
+            }
+            res(200)
+        })
+    })
+}
 const getDiamondCount = (bd) => {
     return new Promise((res, rej) => {
         pool.query(`SELECT diamond_count
@@ -427,5 +438,6 @@ module.exports = {
     createChat,
     getntdFromChat,
     getApplication,
-    getDiamondCount
+    getDiamondCount,
+    setKC
 }

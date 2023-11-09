@@ -54,8 +54,20 @@ io.on('connection', (socket) => {
     socket.on('newMsg', (body) => {
         io.sockets.emit('newMsg', { body: body, id: socket.id })
     })
+    socket.on('kcValChange', (body) => {
+        io.sockets.emit('kcValChange', {kcInfo: body, id: socket.id})
+    })
 })
 io.listen(3002)
+app.post('/diamond/set', (req, res) => {
+    const bd = req.body
+    post.setKC(bd).then(e => {
+        res.status(200).send({status: e})
+    }).catch(e => {
+        console.log(`ERROR in /diamond/set: ${e}`)
+        res.status(500).send({ status: 500, at: `ERROR in /diamond/set`, e: e })
+    })
+})
 app.post('/diamond/:id', (req, res) => {
     const id = req.params.id
     console.log(req.params)
