@@ -63,14 +63,14 @@ io.on('connection', (socket) => {
         io.sockets.emit('newMsg', { body: body, id: socket.id })
     })
     socket.on('kcValChange', (body) => {
-        io.sockets.emit('kcValChange', {kcInfo: body, id: socket.id})
+        io.sockets.emit('kcValChange', { kcInfo: body, id: socket.id })
     })
 })
 io.listen(3002)
 app.post('/diamond/set', (req, res) => {
     const bd = req.body
     post.setKC(bd).then(e => {
-        res.status(200).send({status: e})
+        res.status(200).send({ status: e })
     }).catch(e => {
         console.log(`ERROR in /diamond/set: ${e}`)
         res.status(500).send({ status: 500, at: `ERROR in /diamond/set`, e: e })
@@ -86,6 +86,8 @@ app.post('/diamond/:id', (req, res) => {
         res.status(500).send({ status: 500, at: `ERROR in /diamond/${id}`, e: e })
     })
 })
+
+
 app.post('/applicationuser', (req, res) => {
     const bd = req.body
     post.getApplication(bd).then(e => {
@@ -386,6 +388,25 @@ app.post(`/getpostby`, async (req, res) => {
 })
 
 
+app.post('/countfollow/:iduser', (req, res) => {
+
+    const iduser = req.params.iduser
+    const query = db.oneOrNone(`SELECT count(*) as count
+    FROM follow
+    WHERE id_user = ${iduser}`)
+        .then((e) => {
+            if (e === null) {
+                res.status(401).json({ message: "[401] - Not available!" })
+                return
+            }
+            res.status(200).json({ follow: e })
+        })
+        .catch((error) => {
+            res.status(500).json({ error: error })
+        })
+
+   
+})
 
 
 app.post("/addrating", async (req, res) => {
