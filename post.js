@@ -100,7 +100,7 @@ const apply = (application) => {
             if(e){
                 reject(e)
             }
-            resolve({status: '200 success', rowsAffected: r.rowCount})
+            resolve({status: '200 success'})
         })
     })
 }
