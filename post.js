@@ -341,7 +341,9 @@ const apply = (application) => {
             if (e) {
                 reject(e)
             }
+
             resolve({ status: '200 success', rowsAffected: r.rowCount })
+
         })
     })
 }

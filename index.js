@@ -3,6 +3,10 @@ const bodyParser = require('body-parser');
 const app = express();
 const port = 3001;
 const post = require('./post');
+
+const cors = require('cors');
+app.use(cors({ origin: 'http://localhost:3000' }));
+
 // const userRouter = require('./router/user');
 const pgp = require('pg-promise')();
 const userSignup = require('./models/user');
@@ -25,7 +29,11 @@ const db = pgp({
 
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', 'http://localhost:19006');
+
     res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Access-Control-Allow-Headers');
     next();
@@ -229,6 +237,7 @@ app.post('/cvcount', async (req, res) => {
 
 app.post('/apply', async (req, res) => {
     var application = req.body;
+    console.log(JSON.stringify(application))
     post.apply(application).then(e => {
         res.status(200).send(e)
     }).catch(e => {
@@ -321,9 +330,7 @@ app.post('/updateAvatarUser', async (req, res) => {
 
     try {
         db.none(`UPDATE users SET profile_picture = '${image_picture}' WHERE id_user = ${id_user}`);
-
-
-        res.status(200).json({ code: 200, message: 'Successfully!' });
+        res.status(200).json({ code: 200, message: 'Successfully!', img_picture: image_picture });
         console.log('[200]: Update avatar thành công');
 
     } catch (error) {
@@ -449,6 +456,7 @@ app.post("/adduser", async (req, res) => {
 });
 
 app.post("/addpost", async (req, res) => {
+    const idNTd = 1
     const {
         tieu_de,
         nganh_nghe,
@@ -462,12 +470,13 @@ app.post("/addpost", async (req, res) => {
         kinh_nghiem_yeu_cau,
         phuc_loi,
         note,
-        id_ntd,
     } = req.body;
+
+    console.log("Data đã lấy: " + JSON.stringify(req.body))
 
     const insertQR = `
       INSERT INTO "post" (tieu_de, nganh_nghe, soluong_nguoi, job_category, dia_chi, job_time, gioi_tinh, luong, trinh_do_hoc_van, kinh_nghiem_yeu_cau, phuc_loi, note, id_ntd)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, ${idNTd})
   `;
 
     db.none(insertQR, [
@@ -483,7 +492,7 @@ app.post("/addpost", async (req, res) => {
         kinh_nghiem_yeu_cau,
         phuc_loi,
         note,
-        id_ntd,
+        1,
     ])
         .then(() => {
             res.status(200).json({ message: 'Post created successfully', data: req.body });
@@ -519,7 +528,7 @@ app.get('/upfeedback/:idpost', async (req, res) => {
     const idPost = req.params.idpost
 
     try {
-        const fbs = await db.manyOrNone(`SELECT fb.*, full_name FROM feedback fb, post ps, users u WHERE fb.idpost = ps.id_post and idpost = ${idPost} and fb.iduser = u.id_user`);
+        const fbs = await db.manyOrNone(`SELECT fb.*, full_name, u.profile_picture FROM feedback fb, post ps, users u WHERE fb.idpost = ps.id_post and idpost = ${idPost} and fb.iduser = u.id_user`);
         if (!fbs || fbs.length === 0) {
             res.status(404).json({ error: 'No data found' });
             return
@@ -588,6 +597,75 @@ app.post('/ntd/:idntd', async (req, res) => {
         )
         res.status(500).json({ error: 'Internal Server Error' })
     }
+})
+
+// search mạnh
+
+app.post(`/search/:key`, async (req, res) => {
+    const nameJob = req.params.key
+
+    // console.log("NAME JOB: " + nameJob)
+
+    try {
+        const resultSearch = await db.many(`SELECT * 
+        FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd 
+        WHERE LOWER(p.tieu_de) LIKE LOWER('${nameJob}%') 
+        AND p.id_ntd = ntd.id_ntd 
+        AND ntd.id_dn = dn.id_dn
+    `)
+
+        if (!resultSearch || resultSearch.length === 0) {
+            res.status(401).json({ message: "[401 - Search] Not available" })
+            return
+        }
+        res.status(200).json({ result: resultSearch })
+        return
+    }
+    catch (error) {
+        res.status(500).json({ error: error, warning: "Error tại /search:key" })
+        return
+    }
+})
+
+app.post(`/searchfilter`, async (req, res) => {
+
+    const { nameJob, company, category, position, salaryFrom, salaryTo } = req.body
+
+    console.log(req.body)
+
+    try {
+        const resultFilterSearch = await db.many(`
+        SELECT * 
+        FROM post p
+        JOIN nha_tuyen_dung ntd ON p.id_ntd = ntd.id_ntd
+        JOIN doanh_nghiep dn ON ntd.id_dn = dn.id_dn
+        WHERE p.tieu_de ILIKE $1
+        AND dn.name_dn ILIKE $2
+        AND p.job_category ILIKE $3
+        AND p.position ILIKE $4
+        AND p.luong BETWEEN $5 AND $6
+    `, [
+            `${nameJob}%`,
+            `${company}%`,
+            `${category}%`,
+            `${position}%`,
+            salaryFrom == '' ? 0 : Number(salaryFrom),
+            salaryTo == '' ? 900000000 : Number(salaryTo)
+        ]);
+
+        if (!resultFilterSearch || resultFilterSearch.length === 0) {
+            res.status(401).json({ message: '[401 - Search] Not available' });
+            return;
+        }
+
+        res.status(200).json({ result: resultFilterSearch, message: '[200 - Successfully]' })
+        return
+    }
+    catch (error) {
+        console.error('Error executing the query:', error);
+        res.status(500).json({ error: error.message, warning: '[500 - Server invalid]' });
+    }
+
 })
 
 app.post(`/getcurrentstar/:iduser/:idpost`, async (req, res) => {
@@ -751,6 +829,7 @@ app.get('/', (request, result) => {
             result.status(500).send(e);
         });
 });
+
 
 
 app.listen(port, () => {
