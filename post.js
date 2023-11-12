@@ -6,6 +6,41 @@ const pool = new Pool({
     password: '1234',
     port: 5432
 })
+const postReport = (bd) => {
+    return new Promise((res, rej) => {
+        pool.query(`INSERT INTO report (reason, other_reason, id_user, id_post) VALUES ('${bd.reason}', '${bd.other_reason}', ${bd.id_user}, ${bd.id_post})`, (e, r) => {
+            if(e){
+                rej(e)
+                return
+            }
+            res(200)
+        })
+    })
+}
+const getPostNTD = (bd) => {
+    return new Promise((res, rej) => {
+        pool.query(`SELECT p.*, dn.logo_dn FROM post p, nha_tuyen_dung ntd, doanh_nghiep dn WHERE ntd.id_ntd = ${bd} AND ntd.id_dn = dn.id_dn;
+        `, (e,r) => {
+            if(e){
+                rej(e)
+                return
+            }
+            res(r.rows)
+        })
+    })
+}
+const getReport = (bd) => {
+    return new Promise((res, rej) => {
+        pool.query(`SELECT * FROM report
+        WHERE id_user = ${bd.id_user} AND id_post = ${bd.id_post}`, (e, r) => {
+            if(e){
+                rej(e)
+                return
+            }
+            res(r.rows)
+        })
+    })
+}
 const setKC = (bd) => {
     return new Promise((res, rej) => {
         pool.query(`UPDATE users SET diamond_count = ${bd.diamond_count} WHERE id_user = ${bd.id_user}`, (e, r) => {
@@ -441,5 +476,8 @@ module.exports = {
     getntdFromChat,
     getApplication,
     getDiamondCount,
-    setKC
+    setKC,
+    getReport,
+    postReport,
+    getPostNTD
 }

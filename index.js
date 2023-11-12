@@ -67,6 +67,33 @@ io.on('connection', (socket) => {
     })
 })
 io.listen(3002)
+app.post('/post/:id', (req, res) => {
+    const bd = req.params.id
+    post.getPostNTD(bd).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR in /post/${bd}: ${e}`)
+        res.status(500).send({ status: 500, at: `ERROR in /post/${bd}`, e: e })
+    })
+})
+app.post('/report/get', (req, res) => {
+    const bd = req.body
+    post.getReport(bd).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR in /report/get: ${e}`)
+        res.status(500).send({ status: 500, at: `ERROR in /report/get`, e: e })
+    })
+})
+app.post('/report/add', (req, res) => {
+    const bd = req.body
+    post.postReport(bd).then(e => {
+        res.status(200).send({ status: e })
+    }).catch(e => {
+        console.log(`ERROR in /report/add: ${e}`)
+        res.status(500).send({ status: 500, at: `ERROR in /report/add`, e: e })
+    })
+})
 app.post('/diamond/set', (req, res) => {
     const bd = req.body
     post.setKC(bd).then(e => {
