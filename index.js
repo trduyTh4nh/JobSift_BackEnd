@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const app = express();
 const port = 3001;
 const post = require('./post');
+const bcrypt = require('bcrypt');
 
 const cors = require('cors');
 app.use(cors({ origin: 'http://localhost:3000' }));
@@ -229,6 +230,27 @@ app.post('/getntd', (req, res) => {
     })
 })
 
+app.post('/getallcv/:iduser', (req, res) => {
+    const iduser = req.params.iduser
+
+    const query = `SELECT * FROM cv c, ung_vien uv, users u 
+    WHERE u.id_user = uv.id_user and u.id_user = ${iduser}`
+
+    db.many(query)
+        .then((result) => {
+            if (result === null) {
+                res.status(401).json({ message: "[401] - line 204" })
+                return
+            }
+            res.status(200).json({ result: result })
+        })
+        .catch((error) => {
+            res.status(500).json({ error: error })
+        })
+
+})
+
+
 app.post('/getpostfavourite', (req, res) => {
     const bd = req.body
     post.isExistInFavourite(bd).then(e => {
@@ -442,7 +464,7 @@ app.post('/countfollow/:iduser', (req, res) => {
             res.status(500).json({ error: error })
         })
 
-   
+
 })
 
 
@@ -498,14 +520,22 @@ app.post("/adduser", async (req, res) => {
 
     const insertQR = `
     INSERT INTO "users" (email, password, phone, full_name, profile_picture, diamond_count)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    VALUES ($1, $2, $3, $4, $5, $6) returning id_user
     `;
 
 
-    db.none(insertQR, [email, password, phone, full_name, profile_picture, diamond_count])
-        .then(() => {
+    db.oneOrNone(insertQR, [email, password, phone, full_name, profile_picture, diamond_count])
+        .then((e) => {
+            console.log(JSON.stringify(e))
+            const insertUV = `INSERT INTO ung_vien (id_user) VALUES (${e.id_user})`
 
-            res.status(200).json(req.body);
+            db.none(insertUV).
+                then((result) => {
+                    res.status(200).json(result);
+                })
+                .catch((error) => {
+                    res.status(500).json({ error: error });
+                })
         })
         .catch((error) => {
             console.log(error);
@@ -644,6 +674,27 @@ app.post('/login', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
+
+app.post('/loginntd', async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        const user = await db.oneOrNone(`SELECT * FROM users u, nha_tuyen_dung ntd WHERE ntd.id_user = u.id_user and email = '${email}' and password = '${password}'`);
+
+        if (!user) {
+            res.status(401).json({ message: 'Tài khoản mật khẩu không chính xác!' });
+            return;
+        }
+        res.status(200).json({ message: 'Login thành công!', checkUser: false, user: user });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+
 
 app.post('/ntd/:idntd', async (req, res) => {
     const idNtd = req.params.idntd
@@ -881,6 +932,212 @@ app.post('/updateView', (req, res) => {
     }
 })
 
+app.post('/signupntd', (req, res) => {
+    const {
+        email,
+        emaildn,
+        imglogo_firebase,
+        nameCompany,
+        password,
+        phone,
+        username,
+        address,
+        cordinate
+    } = req.body
+
+    const queryCheckUser = `SELECT * FROM users WHERE email = '${email}'`
+    db.oneOrNone(queryCheckUser)
+        .then((check) => {
+            if (check !== null) {
+                console.log("Null " + check)
+                res.status(404).json({ status: 404, message: 'Email user trùng' })
+                return
+            }
+            const queryCheckEnterprise = `SELECT * FROM doanh_nghiep WHERE email_dn = '${emaildn}'`
+            db.oneOrNone(queryCheckEnterprise).
+                then((kq) => {
+                    if (kq !== null) {
+                        res.status(404).json({ status: 404, message: 'Email doanh nghiệp trùng' })
+                        return
+                    }
+                    console.log("ok" + check)
+                    const queryAddUser = `INSERT INTO users (email, password, phone, full_name, diachi) VALUES ('${email}', '${password}', '${phone}', '${username}', '${address}') returning id_user`
+                    db.oneOrNone(queryAddUser)
+                        .then((result) => {
+                            const newIdUser = result.id_user
+                            const queryAddEnterprise = `INSERT INTO doanh_nghiep (name_dn, email_dn, logo_dn, address, cordiante, banner, description, category, phone_dn) VALUES ('${nameCompany}', '${emaildn}', '${imglogo_firebase}', '${address}', '${cordinate}', '', '', '', '') returning id_dn`
+
+                            db.oneOrNone(queryAddEnterprise)
+                                .then((result2) => {
+                                    const newIdEnterprise = result2.id_dn
+                                    const queryAddNhaTuyenDung = `INSERT INTO nha_tuyen_dung (id_user, id_ntd) VALUES (${newIdUser}, ${newIdEnterprise})`
+
+                                    db.oneOrNone(queryAddNhaTuyenDung)
+                                        .then((result3) => {
+                                            res.status(200).json({ message: "Signup Successfully!" })
+                                        })
+                                        .catch((error) => {
+                                            console.log("ERROR at line 937")
+                                            res.status(500).json({ error: error })
+                                        })
+                                })
+                                .catch((error) => {
+                                    console.log("ERROR at line 942")
+                                    res.status(500).json({ error: error })
+                                })
+
+                        }).catch((error) => {
+                            console.log("ERROR at line 953")
+                            res.status(500).json({ error: error })
+                        })
+
+                })
+                .catch((error) => {
+                    console.log("ERROR at line: 948")
+                    res.status(500).json({ error: error })
+                })
+        })
+        .catch((error) => {
+            console.log("ERROR at line 957: " + error)
+            res.status(500).json({ error: error })
+        })
+
+
+
+
+})
+
+
+const generateCV = async (working_experience, education, activity, language, certificate) => {
+
+}
+// 
+app.post('/genratecv/:iduser', (req, res) => {
+    const idUser = req.params.iduser
+    const {
+        imageUserCV,
+        nameUserCV,
+        birthUserCV,
+        introductionUserCV,
+        desGoalCV,
+        ngon_ngu,
+        job_category,
+        kinh_nghiem,
+        position,
+        working_experience,
+        education,
+        activity,
+        language,
+        certificate
+    } = req.body
+    console.log("Body: " + JSON.stringify(working_experience))
+
+
+    const check = `SELECT uv.id_ungvien FROM users u, ung_vien uv WHERE u.id_user = uv.id_user AND u.id_user = ${idUser}`
+    db.one(check)
+        .then((e) => {
+            if (e === null) {
+                res.status(401).json({ message: '[401 - not found user]' })
+            }
+
+            const insertCV = ` INSERT INTO cv (cv_title, ngon_ngu, loai_cong_viec, kinh_nghiem, nhu_cau, introduction, goal, file_imagge, id_ungvien) VALUES ('${nameUserCV + ' ' + position}', '${ngon_ngu}', '${job_category}', '${kinh_nghiem}', 'không có', '${introductionUserCV}', '${desGoalCV}', '${imageUserCV}', ${e.id_ungvien}) returning id_cv`
+            console.log(insertCV)
+            db.oneOrNone(insertCV)
+                .then((e) => {
+                    const id_return = e
+                    var insertArr = []
+                    for (var i = 0; i < working_experience.length; i++) {
+                        insertArr.push(`('${working_experience[i].nameCompany}', '${working_experience[i].dateStart ? working_experience[i].dateStart : (new Date()).toLocaleDateString('en-US')}', '${working_experience[i].dateEnd ? working_experience[i].dateEnd : (new Date()).toLocaleDateString('en-US')}','${id_return.id_cv}', '${working_experience[i].position}')`)
+                    }
+                    const insertWE = `
+                        INSERT INTO working_experience_cv (ten_doanh_nghiep, start_day, end_day, id_cv, position) VALUES ${insertArr.join(',')}
+                    `
+                    console.log(insertWE)
+                    db.none(insertWE)
+                        .then((e) => {
+                            console.log('Success WE')
+                            insertArr = []
+                            for (var i = 0; i < education.length; i++) {
+                                insertArr.push(`('${education[i].nameSchool}', '${education[i].major}' , '${education[i].dateStart ? education[i].dateStart : (new Date()).toLocaleDateString('en-US')}' , '${education[i].dateEnd ? education[i].dateEnd : (new Date()).toLocaleDateString('en-US')}' , ${id_return.id_cv}, '${education[i].description}')`)
+                            }
+                            const insertEdu = `
+                                    INSERT INTO education (nameschool, major, startdate, enddate, id_cv, description) VALUES ${insertArr.join(',')}
+                                `
+                            db.none(insertEdu)
+                                .then((e) => {
+                                    insertArr = []
+                                    console.log('Success Edu')
+                                    for (var i = 0; i < activity.length; i++) {
+                                        insertArr.push(`('${activity.nameOrganize}', '${activity.position}' ,'', '${activity[i].dateStart ? activity[i].dateStart : (new Date()).toLocaleDateString('en-US')}', '${activity[i].dateEnd ? activity[i].dateEnd : (new Date()).toLocaleDateString('en-US')}', '${activity[i].description}', ${id_return.id_cv})`)
+                                    }
+                                    const insertAC = `
+                                        INSERT INTO activity_cv (name, position, working, start_day, end_day, mo_ta, id_cv) VALUES ${insertArr.join(',')}
+                                        `
+                                    db.none(insertAC)
+                                        .then((e) => {
+                                            insertArr = []
+                                            console.log('Success AC')
+                                            for (var i = 0; i < language.length; i++) {
+                                                insertArr.push(`('${language[i].language}', '${language[i].level}', '${language[i].description}', ${id_return.id_cv})`)
+                                            }
+                                            const insertLang = `
+                                                INSERT INTO language (name, level, description, id_cv) VALUES ${insertArr.join(',')}
+                                                `
+                                            db.none(insertLang)
+                                                .then((e) => {
+                                                    console.log('Success Lang')
+                                                    res.status(200).send({ status: 200 })
+
+
+                                                })
+                                                .catch((error) => {
+                                                    console.log(error + " line 935")
+                                                    res.status(500).json({ error: error })
+                                                })
+                                        })
+                                        .catch((error) => {
+                                            console.log(error + " line 921")
+                                            res.status(500).json({ error: error })
+                                        })
+                                })
+                                .catch((error) => {
+                                    console.log(error + " line 907")
+                                    res.status(500).json({ error: error })
+                                })
+                        })
+                        .catch((error) => {
+                            console.log(error + " line 893")
+                            res.status(500).json({ error: error })
+                        })
+
+
+                    for (var i = 0; i < certificate.length; i++) {
+                        const insertCer = `
+                            INSERT INTO certificate_cv (name_cert, noi_dung, id_cv, ngaycap) VALUES ('${certificate[i].nameCer}', '${certificate[i].description}' ,${id_return.id_cv} , '${certificate[i].dateStart ? certificate[i].dateStart : (new Date()).toLocaleDateString('en-US')}')
+                        `
+                        db.none(insertCer)
+                            .then((e) => {
+                                console.log('Success WE')
+                            })
+                            .catch((error) => {
+                                console.log(error + " line 949")
+                                res.status(500).json({ error: error })
+                            })
+                    }
+                })
+                .catch((error) => {
+                    console.log(error + " line 959")
+                    res.status(500).json({ error: error })
+                })
+        })
+        .catch((error) => {
+            console.log(error + " line 964")
+            res.status(500).json({ error: error })
+        })
+})
+
+
+
 
 app.get('/', (request, result) => {
     post.getPost()
@@ -899,5 +1156,6 @@ app.get('/', (request, result) => {
 app.listen(port, () => {
     console.log(`App running on port ${port}`);
 });
+
 
 

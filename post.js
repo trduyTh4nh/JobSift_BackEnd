@@ -42,9 +42,11 @@ const getReport = (bd) => {
     })
 }
 const setKC = (bd) => {
+
     return new Promise((res, rej) => {
+        console.log('DEBUG: ' + JSON.stringify(bd))
         pool.query(`UPDATE users SET diamond_count = ${bd.diamond_count} WHERE id_user = ${bd.id_user}`, (e, r) => {
-            if(e){
+            if (e) {
                 rej(e)
                 return
             }
@@ -57,7 +59,7 @@ const getDiamondCount = (bd) => {
         pool.query(`SELECT diamond_count
         FROM users
         WHERE id_user = ${bd};`, (e, r) => {
-            if(e){
+            if (e) {
                 rej(e)
                 return
             }
@@ -143,6 +145,7 @@ const createChat = (bd) => {
         })
     })
 }
+
 const postMessage = (bd) => {
     return new Promise((res, rej) => {
         pool.query(`INSERT INTO message 
