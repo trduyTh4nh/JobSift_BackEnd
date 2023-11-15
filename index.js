@@ -228,16 +228,24 @@ app.post('/getallcv/:iduser', (req, res) => {
 
     db.many(query)
         .then((result) => {
-            if (result === null) {
+            if (result.length <= 0) {
                 res.status(401).json({ message: "[401] - line 204" })
                 return
             }
             res.status(200).json({ result: result })
         })
         .catch((error) => {
+            console.log("ERROR at line 238: " + error)
             res.status(500).json({ error: error })
         })
 
+})
+
+app.post('/deletecv/:idcv', (req, res) => {
+    const idcv = req.params.idcv
+
+    const deletecv = `DELETE FROM cv WHERE id_cv = ${idcv}`
+    
 })
 
 
@@ -362,7 +370,6 @@ app.post('/createcv', async (req, res) => {
 
 })
 
-
 app.post('/updateUser', async (req, res) => {
     const user = req.body;
     post.updateUser(user).then((e) => {
@@ -389,8 +396,6 @@ app.post('/updateAvatarUser', async (req, res) => {
         console.error(`[500 - ${error}]`);
     }
 });
-
-
 app.post('/favourite', async (req, res) => {
     const { id_user } = req.body
     var date = new Date()
@@ -456,8 +461,6 @@ app.post('/countfollow/:iduser', (req, res) => {
 
 
 })
-
-
 app.post("/addrating", async (req, res) => {
 
     //lấy rating ra từ user
@@ -548,13 +551,14 @@ app.post("/addpost", async (req, res) => {
         kinh_nghiem_yeu_cau,
         phuc_loi,
         note,
+        id_user
     } = req.body;
 
     console.log("Data đã lấy: " + JSON.stringify(req.body))
 
     const insertQR = `
       INSERT INTO "post" (tieu_de, nganh_nghe, soluong_nguoi, job_category, dia_chi, job_time, gioi_tinh, luong, trinh_do_hoc_van, kinh_nghiem_yeu_cau, phuc_loi, note, id_ntd)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, ${idNTd})
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, ${id_user})
   `;
 
     db.none(insertQR, [
@@ -633,8 +637,6 @@ app.get('/upfeedback/getrate/:idpost', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' })
     }
 })
-
-
 
 app.post('/login', async (req, res) => {
     const { email, password } = req.body;
@@ -895,8 +897,6 @@ app.post('/popularjob', async (req, res) => {
         return
     }
 })
-
-
 app.post('/updateView', (req, res) => {
     const { id_post, numberView } = req.body
 
@@ -915,7 +915,6 @@ app.post('/updateView', (req, res) => {
         res.status(500).json({ error })
     }
 })
-
 app.post('/signupntd', (req, res) => {
     const {
         email,
@@ -926,13 +925,18 @@ app.post('/signupntd', (req, res) => {
         phone,
         username,
         address,
-        cordinate
+        cordinate,
+        description
     } = req.body
+
+
+
+    console.log(req.body)
 
     const queryCheckUser = `SELECT * FROM users WHERE email = '${email}'`
     db.oneOrNone(queryCheckUser)
         .then((check) => {
-            if (check !== null) {
+            if (check) {
                 console.log("Null " + check)
                 res.status(404).json({ status: 404, message: 'Email user trùng' })
                 return
@@ -940,28 +944,33 @@ app.post('/signupntd', (req, res) => {
             const queryCheckEnterprise = `SELECT * FROM doanh_nghiep WHERE email_dn = '${emaildn}'`
             db.oneOrNone(queryCheckEnterprise).
                 then((kq) => {
-                    if (kq !== null) {
+                    if (kq) {
+                        console.log("Null enterprise" + check)
                         res.status(404).json({ status: 404, message: 'Email doanh nghiệp trùng' })
                         return
                     }
-                    console.log("ok" + check)
+
                     const queryAddUser = `INSERT INTO users (email, password, phone, full_name, diachi) VALUES ('${email}', '${password}', '${phone}', '${username}', '${address}') returning id_user`
                     db.oneOrNone(queryAddUser)
                         .then((result) => {
                             const newIdUser = result.id_user
-                            const queryAddEnterprise = `INSERT INTO doanh_nghiep (name_dn, email_dn, logo_dn, address, cordiante, banner, description, category, phone_dn) VALUES ('${nameCompany}', '${emaildn}', '${imglogo_firebase}', '${address}', '${cordinate}', '', '', '', '') returning id_dn`
 
+                            const queryAddEnterprise = `INSERT INTO doanh_nghiep (name_dn, email_dn, logo_dn, address, cordiante, banner, description, category, phone_dn) VALUES ('${nameCompany}', '${emaildn}', '${imglogo_firebase}', '${address}', '${cordinate}', '', '${description}', '', '') returning id_dn`
                             db.oneOrNone(queryAddEnterprise)
                                 .then((result2) => {
-                                    const newIdEnterprise = result2.id_dn
-                                    const queryAddNhaTuyenDung = `INSERT INTO nha_tuyen_dung (id_user, id_ntd) VALUES (${newIdUser}, ${newIdEnterprise})`
 
+                                    const newIdEnterprise = result2.id_dn
+                                    console.log("ID doanh nghiệp: " + newIdEnterprise)
+
+                                    const queryAddNhaTuyenDung = `INSERT INTO nha_tuyen_dung (id_user, id_dn) VALUES (${newIdUser}, ${newIdEnterprise})`
                                     db.oneOrNone(queryAddNhaTuyenDung)
                                         .then((result3) => {
+
                                             res.status(200).json({ message: "Signup Successfully!" })
                                         })
                                         .catch((error) => {
-                                            console.log("ERROR at line 937")
+
+                                            console.log("ERROR at line 937: " + error)
                                             res.status(500).json({ error: error })
                                         })
                                 })
@@ -1121,6 +1130,21 @@ app.post('/genratecv/:iduser', (req, res) => {
 })
 
 
+app.post('/getdnofntd/:iddn', (req, res) => {
+    const idDN = req.params.iddn
+
+    const getDn = `SELECT * FROM doanh_nghiep WHERE id_dn = ${idDN}`
+
+    db.oneOrNone(getDn)
+        .then((kq) => {
+            res.status(200).json({ enterprise: kq })
+        })
+        .catch((error) => {
+            console.log("ERROR at line 1129: " + error)
+            res.status(500).json({ error })
+        })
+})
+
 
 
 app.get('/', (request, result) => {
@@ -1136,6 +1160,20 @@ app.get('/', (request, result) => {
 });
 
 
+
+app.post('/removecv/:idcv', (req, res) => {
+    const idcv = req.params.idcv
+
+    const queryRemoveCV = `DELETE FROM cv WHERE id_cv = ${idcv}`
+
+    db.none(queryRemoveCV)
+    .then((response) => {
+        res.status(200).json({ message : "Successfully!" })
+    })
+    .catch((error) => {
+        res.status(500).json({ error: error })
+    })
+})
 
 app.listen(port, () => {
     console.log(`App running on port ${port}`);
