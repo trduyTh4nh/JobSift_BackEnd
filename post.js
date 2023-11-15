@@ -297,6 +297,40 @@ const getPost = () => {
 
     })
 }
+const getCompanyStatistics = (id_enter) => {
+    return new Promise((resolve, reject) => {
+        var data = {};
+        pool.query(`SELECT COUNT(p.*) as count
+        FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd
+        WHERE p.id_ntd = ntd.id_ntd AND ntd.id_dn = dn.id_dn AND dn.id_dn = ${id_enter};`, (error, result) => {
+            if(error){
+                reject(error)
+                return
+            }
+            data = {...data, count: result.rows[0].count}
+            
+        })
+            pool.query(`SELECT COUNT(dut.*) as count_dut
+            FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd, don_ung_tien dut
+            WHERE p.id_ntd = ntd.id_ntd AND ntd.id_dn = dn.id_dn AND dut.id_post = p.id_post AND dn.id_dn = ${id_enter};`, (error, result) => {
+                if (error) {
+                    reject(error)
+                    return
+                }
+                data = {...data, count_dut: result.rows[0].count_dut}
+                pool.query(`SELECT count(*) AS count_fl
+                FROM follow f
+                WHERE id_dn = ${id_enter};`, (error, result) => {
+                    if (error) {
+                        reject(error)
+                        return
+                    }
+                    data = {...data, count_fl: result.rows[0].count_fl}
+                    resolve(data)
+                })
+            })
+    })
+}
 const updateUser = async (user) => {
     return new Promise((resolve, reject) => {
         if (!user.id_user) {
@@ -513,5 +547,6 @@ module.exports = {
     setKC,
     getReport,
     postReport,
-    getPostNTD
+    getPostNTD,
+    getCompanyStatistics
 }
