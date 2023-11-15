@@ -7,7 +7,7 @@ const post = require('./post');
 const cors = require('cors');
 app.use(cors({ origin: 'http://localhost:3000' }));
 
-// const userRouter = require('./router/user');
+// const userRouter = require('./router/user');p
 const pgp = require('pg-promise')();
 const userSignup = require('./models/user');
 const { errors, as } = require('pg-promise');
@@ -45,11 +45,11 @@ app.use(bodyParser.json())
 const server = require('http').Server(app)
 const io = require('socket.io')(server, {
     cors: {
-        origin: "http://localhost:5173",
+        origin: "http://localhost:3000",
         methods: ["GET", "POST"],
         allowedHeaders: ["my-custom-header"],
         credentials: true
-    }
+    },
 })
 // app.use(userSignup)
 
@@ -175,6 +175,7 @@ app.post('/ntd', (req, res) => {
 })
 app.use(bodyParser.urlencoded({ extended: false }))
 app.post('/postmsg', (req, res) => {
+    console.log(`/postmsg: ` + JSON.stringify(req.body))
     const bd = req.body
     post.postMessage(bd).then(e => {
         res.status(200).send({ message: 'Success' })
@@ -195,6 +196,15 @@ app.post('/getmsg', (req, res) => {
 
 app.post('/chat', (req, res) => {
     const bd = req.body
+    if(bd.id_ntd){
+        post.getChat(bd).then(e => {
+            res.status(200).send(e)
+        }).catch(e => {
+            console.log(`ERROR in /chat @ {getChat}: ${e}`)
+            res.status(500).send({ status: 500, at: '/addfavourite & getChat', e: e })
+        })
+        return
+    }
     post.checkUngVien(bd.id_user).then(e => {
         console.log(e)
         post.getChat(e[0]).then(e => {
@@ -518,13 +528,17 @@ app.post("/addpost", async (req, res) => {
         kinh_nghiem_yeu_cau,
         phuc_loi,
         note,
+        id_user,
+        currency,
+        priceTo
     } = req.body;
-
+    console.log(priceTo)
+    console.log(currency)
     console.log("Data đã lấy: " + JSON.stringify(req.body))
 
     const insertQR = `
-      INSERT INTO "post" (tieu_de, nganh_nghe, soluong_nguoi, job_category, dia_chi, job_time, gioi_tinh, luong, trinh_do_hoc_van, kinh_nghiem_yeu_cau, phuc_loi, note, id_ntd)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, ${idNTd})
+      INSERT INTO "post" (tieu_de, nganh_nghe, soluong_nguoi, job_category, dia_chi, job_time, gioi_tinh, luong, trinh_do_hoc_van, kinh_nghiem_yeu_cau, phuc_loi, note, id_ntd, highest_salary, currency)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
   `;
 
     db.none(insertQR, [
@@ -540,7 +554,9 @@ app.post("/addpost", async (req, res) => {
         kinh_nghiem_yeu_cau,
         phuc_loi,
         note,
-        1,
+        id_user,
+        priceTo,
+        currency
     ])
         .then(() => {
             res.status(200).json({ message: 'Post created successfully', data: req.body });

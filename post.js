@@ -157,7 +157,21 @@ const postMessage = (bd) => {
     })
 }
 const getChat = (bd) => {
+    console.log(bd)
     return new Promise((res, rej) => {
+        console.log(bd)
+        if (bd.ntd){
+            pool.query(`SELECT c.id_chat as id, c.chat_name, msg.content as sendLast, gc.id_ntd, gc.id_ungvien, msg.time, msg.id_user, u.full_name as userName, u.profile_picture as avtUser
+            FROM chat c, groupchat gc, message msg, ung_vien ntd, users u
+            WHERE gc.id_chat = c.id_chat AND msg.id_chat = c.id_chat AND c.id_chat = ${bd.id_chat} AND ntd.id_user = u.id_user AND gc.id_ungvien = ntd.id_ungvien
+            ORDER BY msg.time;`, (e, r) => {
+                if (e) {
+                    rej(e)
+                    return
+                }
+                res(r.rows)
+            })
+        }
         if (bd.id_chat) {
             pool.query(`SELECT c.id_chat, msg.id_mess,  c.chat_name, msg.content, gc.id_ntd, msg.id_user, msg.time, u.full_name, u.profile_picture
             FROM chat c, groupchat gc, message msg, nha_tuyen_dung ntd, users u
@@ -168,6 +182,23 @@ const getChat = (bd) => {
                     return
                 }
                 res(r.rows)
+            })
+        } else if(bd.id_ntd) {
+            pool.query(`SELECT c.id_chat as id, c.chat_name, msg.content as sendLast, gc.id_ntd, gc.id_ungvien, msg.time, u.full_name as userName, u.profile_picture as avtUser
+            FROM chat c, groupchat gc, message msg, ung_vien ntd, users u
+            WHERE gc.id_chat = c.id_chat AND msg.id_chat = c.id_chat AND gc.id_ntd = ${bd.id_ntd} AND ntd.id_user = u.id_user AND gc.id_ungvien = ntd.id_ungvien
+            ORDER BY msg.time DESC;`, (e, r) => {
+                if (e) {
+                    rej(e)
+                    return
+                }
+                console.log(r.rows)
+                var result = []
+                result = r.rows.filter((obj, index) => {
+                    return r.rows.findIndex((item) => (item.id === obj.id)) === index
+                })
+                console.log(result)
+                res(result)
             })
         } else {
             pool.query(`SELECT c.id_chat, c.chat_name, msg.content, gc.id_ntd, gc.id_ungvien, msg.time, u.full_name, u.profile_picture
