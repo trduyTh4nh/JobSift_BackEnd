@@ -9,7 +9,7 @@ const pool = new Pool({
 const postReport = (bd) => {
     return new Promise((res, rej) => {
         pool.query(`INSERT INTO report (reason, other_reason, id_user, id_post) VALUES ('${bd.reason}', '${bd.other_reason}', ${bd.id_user}, ${bd.id_post})`, (e, r) => {
-            if(e){
+            if (e) {
                 rej(e)
                 return
             }
@@ -20,8 +20,8 @@ const postReport = (bd) => {
 const getPostNTD = (bd) => {
     return new Promise((res, rej) => {
         pool.query(`SELECT p.*, dn.logo_dn FROM post p, nha_tuyen_dung ntd, doanh_nghiep dn WHERE ntd.id_ntd = ${bd} AND ntd.id_dn = dn.id_dn;
-        `, (e,r) => {
-            if(e){
+        `, (e, r) => {
+            if (e) {
                 rej(e)
                 return
             }
@@ -33,7 +33,7 @@ const getReport = (bd) => {
     return new Promise((res, rej) => {
         pool.query(`SELECT * FROM report
         WHERE id_user = ${bd.id_user} AND id_post = ${bd.id_post}`, (e, r) => {
-            if(e){
+            if (e) {
                 rej(e)
                 return
             }
@@ -163,7 +163,7 @@ const getChat = (bd) => {
     console.log(bd)
     return new Promise((res, rej) => {
         console.log(bd)
-        if (bd.ntd){
+        if (bd.ntd) {
             pool.query(`SELECT c.id_chat as id, c.chat_name, msg.content as sendLast, gc.id_ntd, gc.id_ungvien, msg.time, msg.id_user, u.full_name as userName, u.profile_picture as avtUser
             FROM chat c, groupchat gc, message msg, ung_vien ntd, users u
             WHERE gc.id_chat = c.id_chat AND msg.id_chat = c.id_chat AND c.id_chat = ${bd.id_chat} AND ntd.id_user = u.id_user AND gc.id_ungvien = ntd.id_ungvien
@@ -186,7 +186,7 @@ const getChat = (bd) => {
                 }
                 res(r.rows)
             })
-        } else if(bd.id_ntd) {
+        } else if (bd.id_ntd) {
             pool.query(`SELECT c.id_chat as id, c.chat_name, msg.content as sendLast, gc.id_ntd, gc.id_ungvien, msg.time, u.full_name as userName, u.profile_picture as avtUser
             FROM chat c, groupchat gc, message msg, ung_vien ntd, users u
             WHERE gc.id_chat = c.id_chat AND msg.id_chat = c.id_chat AND gc.id_ntd = ${bd.id_ntd} AND ntd.id_user = u.id_user AND gc.id_ungvien = ntd.id_ungvien
@@ -287,7 +287,7 @@ const isExistInFavourite = (bd) => {
 }
 const getPost = () => {
     return new Promise((resolve, reject) => {
-        pool.query('SELECT * FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd WHERE p.id_ntd = ntd.id_ntd and ntd.id_dn = dn.id_dn AND p.ngay_hethan > CURRENT_DATE', (error, result) => {
+        pool.query('SELECT * FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd, loai_cong_viec l, vi_tri v WHERE p.id_ntd = ntd.id_ntd and ntd.id_dn = dn.id_dn and l.id_loai = p.nganh_nghe and v.id_vitri = p.position AND p.ngay_hethan > CURRENT_DATE', (error, result) => {
             if (error) {
                 console.log('error: ' + error)
                 reject(error)

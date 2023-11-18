@@ -4,7 +4,6 @@ const app = express();
 const port = 3001;
 const post = require('./post');
 const bcrypt = require('bcrypt');
-
 const cors = require('cors');
 app.use(cors({ origin: 'http://localhost:3000' }));
 
@@ -20,6 +19,10 @@ const db = pgp({
     user: 'postgres',
     password: '1234',
 })
+
+
+const stripe = require('stripe')('sk_test_51ODOjFDqDQ31HEFQoMajoFb6sEX4MK9Fut3sUuArNPEJBBhFDfll7aVqCg3G3keNtWY6VuCvY1wX8CTuqZO3Ppp700zX3wH6vo');
+
 // const db = pgp({
 //     host: 'db.yejwtqvhwplmyzushalg.supabase.co',
 //     port: 5432,
@@ -52,6 +55,56 @@ const io = require('socket.io')(server, {
         credentials: true
     },
 })
+
+
+app.post('/payment-sheet', async (req, res) => {
+    const { price } = req.body;
+    const customer = await stripe.customers.create();
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+        { customer: customer.id },
+        { apiVersion: '2023-10-16' }
+    );
+
+    const amountInVND = price; // Số tiền VND
+    const amountInVNDInCents = Math.round(amountInVND * 100); // Chuyển đổi VND sang cent và làm tròn
+
+
+    // Tiếp tục xử lý paymentIntent với amountInVNDInCents
+    const paymentIntent = await stripe.paymentIntents.create({
+        amount: amountInVNDInCents,
+        currency: 'vnd',
+        customer: customer.id,
+        automatic_payment_methods: {
+            enabled: true,
+        },
+    });
+
+    res.json({
+        paymentIntent: paymentIntent.client_secret,
+        ephemeralKey: ephemeralKey.secret,
+        customer: customer.id,
+        publishableKey: 'pk_test_51ODOjFDqDQ31HEFQwTDCiTH1AyfrMZGiFNjgitItFOyPkQliWEUJEC4RkcspbyNpm8n7sxwH5VZEdc7oy9ZHqGOT00LByYtfnn'
+    });
+
+    // // const vndAmount = price;
+    // const paymentIntent = await stripe.paymentIntents.create({
+    //     amount: price,
+    //     currency: 'vnd',
+    //     customer: customer.id,
+    //     // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+    //     automatic_payment_methods: {
+    //         enabled: true,
+    //     },
+    // });
+
+    // res.json({
+    //     paymentIntent: paymentIntent.client_secret,
+    //     ephemeralKey: ephemeralKey.secret,
+    //     customer: customer.id,
+    //     publishableKey: 'pk_test_51ODOjFDqDQ31HEFQwTDCiTH1AyfrMZGiFNjgitItFOyPkQliWEUJEC4RkcspbyNpm8n7sxwH5VZEdc7oy9ZHqGOT00LByYtfnn'
+    // });
+});
+
 // app.use(userSignup)
 
 // app.use(bodyParser.text({
@@ -68,6 +121,57 @@ io.on('connection', (socket) => {
     })
 })
 io.listen(3002)
+// app.post('/buykc', async (req, res) => {
+//     const { iduser, kc } = req.body;
+//     try {
+//         const user = await db.oneOrNone('SELECT * FROM users WHERE id_user = $1', iduser);
+
+//         if (!user) {
+//             return res.status(404).json({ message: 'User not found' });
+//         }
+//         const newDiamondCount = parseInt(user.diamond_count) + parseInt(kc);
+
+//         await db.none('UPDATE users SET diamond_count = $1 WHERE id_user = $2', [newDiamondCount, iduser]);
+
+//         return res.status(200).json({ message: 'Successfully updated diamond count' });
+//     } catch (error) {
+//         console.log('Error:', error);
+//         return res.status(500).json({ error: error.message || 'Internal server error' });
+//     }
+// });
+
+app.post('/buykc', (req, res) => {
+    const { iduser, kc } = req.body
+
+    console.log(req.body)
+
+    const getKCcurrent = `SELECT * FROM users WHERE id_user = ${iduser}`
+
+    db.oneOrNone(getKCcurrent)
+        .then((e) => {
+            const quantityDAM = e.diamond_count;
+            const upgradeKC = `UPDATE users SET diamond_count = ${parseInt(kc) + parseInt(quantityDAM)} WHERE id_user = ${iduser}`
+            db.none(upgradeKC)
+                .then((e) => {
+                    res.status(200).json({ message: "successfully!" })
+                    return
+                })
+                .catch((error) => {
+                    console.log("ERROR at line 119: " + error)
+                    res.status(500).json({ error: error })
+
+                })
+        })
+        .catch((error) => {
+            console.log("ERROR at line 113: " + error)
+            res.status(500).json({ error: error })
+        })
+})
+
+
+
+
+
 app.get('/enterprise/statistics/:id', (req, res) => {
     const bd = req.params.id
     post.getCompanyStatistics(bd).then(e => {
@@ -77,6 +181,7 @@ app.get('/enterprise/statistics/:id', (req, res) => {
         res.status(500).send({ status: 500, at: `ERROR in /enterprise/statistics/${bd}`, e: e })
     })
 })
+
 app.post('/post/:id', (req, res) => {
     const bd = req.params.id
     post.getPostNTD(bd).then(e => {
@@ -206,7 +311,7 @@ app.post('/getmsg', (req, res) => {
 
 app.post('/chat', (req, res) => {
     const bd = req.body
-    if(bd.id_ntd){
+    if (bd.id_ntd) {
         post.getChat(bd).then(e => {
             res.status(200).send(e)
         }).catch(e => {
@@ -835,7 +940,6 @@ app.post(`/getinfontd`, async (req, res) => {
           AND ps.id_ntd = ${id_ntd} 
           AND ntd.id_dn = dn.id_dn;`)
 
-
         const getQuantityPost = await db.oneOrNone(`SELECT count(p.*)
         FROM post p, nha_tuyen_dung n, doanh_nghiep dn, post ps
         WHERE p.id_ntd = n.id_ntd AND n.id_dn = dn.id_dn AND p.id_post = ${id_post}`)
@@ -909,9 +1013,9 @@ app.post('/popularjob', async (req, res) => {
     try {
         const popularjob = await db.manyOrNone(`
         SELECT * 
-        FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd
+        FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd, loai_cong_viec l, vi_tri v 
         WHERE views > 1000
-        and p.id_ntd = ntd.id_ntd and ntd.id_dn = dn.id_dn and p.ngay_hethan > CURRENT_DATE
+        and p.id_ntd = ntd.id_ntd and ntd.id_dn = dn.id_dn and l.id_loai = p.nganh_nghe and v.id_vitri = p.position and p.ngay_hethan > CURRENT_DATE
         `)
 
 
@@ -1065,7 +1169,7 @@ app.post('/genratecv/:iduser', (req, res) => {
                 res.status(401).json({ message: '[401 - not found user]' })
             }
 
-            const insertCV = ` INSERT INTO cv (cv_title, ngon_ngu, loai_cong_viec, kinh_nghiem, nhu_cau, introduction, goal, file_imagge, id_ungvien) VALUES ('${nameUserCV + ' ' + position}', '${ngon_ngu}', '${job_category}', '${kinh_nghiem}', 'không có', '${introductionUserCV}', '${desGoalCV}', '${imageUserCV}', ${e.id_ungvien}) returning id_cv`
+            const insertCV = ` INSERT INTO cv (cv_title, ngon_ngu, loai_cong_viec, kinh_nghiem, nhu_cau, introduction, goal, file_imagge, id_ungvien, position) VALUES ('${nameUserCV + ' ' + position}', '${ngon_ngu}', '${job_category}', '${kinh_nghiem}', 'không có', '${introductionUserCV}', '${desGoalCV}', '${imageUserCV}', ${e.id_ungvien}, '${position}') returning id_cv`
             console.log(insertCV)
             db.oneOrNone(insertCV)
                 .then((e) => {
@@ -1199,17 +1303,35 @@ app.post('/removecv/:idcv', (req, res) => {
     const queryRemoveCV = `DELETE FROM cv WHERE id_cv = ${idcv}`
 
     db.none(queryRemoveCV)
-    .then((response) => {
-        res.status(200).json({ message : "Successfully!" })
-    })
-    .catch((error) => {
-        res.status(500).json({ error: error })
-    })
+        .then((response) => {
+            res.status(200).json({ message: "Successfully!" })
+        })
+        .catch((error) => {
+            res.status(500).json({ error: error })
+        })
+})
+
+app.post(`/getallposition`, (req, res) => {
+    {
+        const getAllPosition = `SELECT * FROM vi_tri`
+        db.many(getAllPosition)
+            .then((e) => {
+                res.status(200).json({ allPosition: e })
+            })
+            .catch((error) => {
+                {
+                    console.log("ERROR at line 1304: " + error)
+                    res.status(500).json({ error: error })
+                }
+            })
+    }
 })
 
 app.listen(port, () => {
     console.log(`App running on port ${port}`);
 });
+
+
 
 
 
