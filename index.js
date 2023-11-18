@@ -121,8 +121,6 @@ io.on('connection', (socket) => {
     })
 })
 io.listen(3002)
-<<<<<<< HEAD
-
 // app.post('/buykc', async (req, res) => {
 //     const { iduser, kc } = req.body;
 //     try {
@@ -173,7 +171,7 @@ app.post('/buykc', (req, res) => {
 
 
 
-=======
+
 app.get('/enterprise/statistics/:id', (req, res) => {
     const bd = req.params.id
     post.getCompanyStatistics(bd).then(e => {
@@ -183,7 +181,7 @@ app.get('/enterprise/statistics/:id', (req, res) => {
         res.status(500).send({ status: 500, at: `ERROR in /enterprise/statistics/${bd}`, e: e })
     })
 })
->>>>>>> eee29762fa531ff76f2efc80c8f7a16dce696232
+
 app.post('/post/:id', (req, res) => {
     const bd = req.params.id
     post.getPostNTD(bd).then(e => {
