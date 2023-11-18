@@ -121,6 +121,7 @@ io.on('connection', (socket) => {
     })
 })
 io.listen(3002)
+<<<<<<< HEAD
 
 // app.post('/buykc', async (req, res) => {
 //     const { iduser, kc } = req.body;
@@ -172,6 +173,17 @@ app.post('/buykc', (req, res) => {
 
 
 
+=======
+app.get('/enterprise/statistics/:id', (req, res) => {
+    const bd = req.params.id
+    post.getCompanyStatistics(bd).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR in /enterprise/statistics/${bd}: ${e}`)
+        res.status(500).send({ status: 500, at: `ERROR in /enterprise/statistics/${bd}`, e: e })
+    })
+})
+>>>>>>> eee29762fa531ff76f2efc80c8f7a16dce696232
 app.post('/post/:id', (req, res) => {
     const bd = req.params.id
     post.getPostNTD(bd).then(e => {
@@ -667,16 +679,16 @@ app.post("/addpost", async (req, res) => {
         note,
         id_user,
         currency,
-        priceTo
-
+        priceTo,
+        position
     } = req.body;
     console.log(priceTo)
     console.log(currency)
     console.log("Data đã lấy: " + JSON.stringify(req.body))
 
     const insertQR = `
-      INSERT INTO "post" (tieu_de, nganh_nghe, soluong_nguoi, job_category, dia_chi, job_time, gioi_tinh, luong, trinh_do_hoc_van, kinh_nghiem_yeu_cau, phuc_loi, note, id_ntd, highest_salary, currency)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      INSERT INTO "post" (tieu_de, nganh_nghe, soluong_nguoi, job_category, dia_chi, job_time, gioi_tinh, luong, trinh_do_hoc_van, kinh_nghiem_yeu_cau, phuc_loi, note, id_ntd, highest_salary, currency, position, ngay_post)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
   `;
 
     db.none(insertQR, [
@@ -694,7 +706,9 @@ app.post("/addpost", async (req, res) => {
         note,
         id_user,
         priceTo,
-        currency
+        currency,
+        position,
+        new Date()
     ])
         .then(() => {
             res.status(200).json({ message: 'Post created successfully', data: req.body });
@@ -1003,7 +1017,7 @@ app.post('/popularjob', async (req, res) => {
 
 
         if (popularjob.length === 0) {
-            res.status(401).json({ message: "Not available!" })
+            res.status(200).json({ message: "Not available!" })
             return
         }
 
@@ -1084,7 +1098,6 @@ app.post('/signupntd', (req, res) => {
                                     const queryAddNhaTuyenDung = `INSERT INTO nha_tuyen_dung (id_user, id_dn) VALUES (${newIdUser}, ${newIdEnterprise})`
                                     db.oneOrNone(queryAddNhaTuyenDung)
                                         .then((result3) => {
-
                                             res.status(200).json({ message: "Signup Successfully!" })
                                         })
                                         .catch((error) => {
@@ -1094,7 +1107,7 @@ app.post('/signupntd', (req, res) => {
                                         })
                                 })
                                 .catch((error) => {
-                                    console.log("ERROR at line 942")
+                                    console.log("ERROR at line 942: " + error)
                                     res.status(500).json({ error: error })
                                 })
 
