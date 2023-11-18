@@ -348,7 +348,7 @@ app.post('/getallcv/:iduser', (req, res) => {
     const iduser = req.params.iduser
 
     const query = `SELECT * FROM cv c, ung_vien uv, users u 
-    WHERE u.id_user = uv.id_user and u.id_user = ${iduser}`
+    WHERE u.id_user = uv.id_user and u.id_user = ${iduser} and c.cv_title is not null`
 
     db.many(query)
         .then((result) => {
@@ -369,7 +369,6 @@ app.post('/deletecv/:idcv', (req, res) => {
     const idcv = req.params.idcv
 
     const deletecv = `DELETE FROM cv WHERE id_cv = ${idcv}`
-
 })
 
 
@@ -416,7 +415,14 @@ app.post('/cvcount', async (req, res) => {
         res.status(500).send({ error: 500, msg: 'ERROR AT /cvcount', callStack: e })
     })
 })
-
+//sekeleton:
+/*
+    {
+        id_cv: Number,
+        id_post: Number,
+        id_user: Number
+    }
+*/
 
 app.post('/apply', async (req, res) => {
     var application = req.body;
@@ -1009,7 +1015,7 @@ app.post('/popularjob', async (req, res) => {
         SELECT * 
         FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd, loai_cong_viec l, vi_tri v 
         WHERE views > 1000
-        and p.id_ntd = ntd.id_ntd and ntd.id_dn = dn.id_dn and l.id_loai = p.nganh_nghe and v.id_vitri = p.position 
+        and p.id_ntd = ntd.id_ntd and ntd.id_dn = dn.id_dn and l.id_loai = p.nganh_nghe and v.id_vitri = p.position and p.ngay_hethan > CURRENT_DATE
         `)
 
 

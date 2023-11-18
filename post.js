@@ -287,7 +287,7 @@ const isExistInFavourite = (bd) => {
 }
 const getPost = () => {
     return new Promise((resolve, reject) => {
-        pool.query('SELECT * FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd, loai_cong_viec l, vi_tri v WHERE p.id_ntd = ntd.id_ntd and ntd.id_dn = dn.id_dn and l.id_loai = p.nganh_nghe and v.id_vitri = p.position', (error, result) => {
+        pool.query('SELECT * FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd, loai_cong_viec l, vi_tri v WHERE p.id_ntd = ntd.id_ntd and ntd.id_dn = dn.id_dn and l.id_loai = p.nganh_nghe and v.id_vitri = p.position AND p.ngay_hethan > CURRENT_DATE', (error, result) => {
             if (error) {
                 console.log('error: ' + error)
                 reject(error)
@@ -326,7 +326,16 @@ const getCompanyStatistics = (id_enter) => {
                         return
                     }
                     data = {...data, count_fl: result.rows[0].count_fl}
-                    resolve(data)
+                    pool.query(`SELECT COUNT(dut.*) as count_approval
+                    FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd, don_ung_tien dut
+                    WHERE p.id_ntd = ntd.id_ntd AND ntd.id_dn = dn.id_dn AND dut.id_post = p.id_post AND dn.id_dn = ${id_enter} AND dut.status != 0;`, (error, result) => {
+                        if(error){
+                            reject(error)
+                            return
+                        }
+                        data = {...data, count_approval: result.rows[0].count_approval}
+                        resolve(data)
+                    })
                 })
             })
     })
@@ -445,7 +454,7 @@ const apply = (application) => {
                 reject(e)
             }
 
-            resolve({ status: '200 success', rowsAffected: r.rowCount })
+            resolve({ status: '200 success' })
 
         })
     })
