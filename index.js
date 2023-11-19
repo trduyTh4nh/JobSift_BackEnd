@@ -700,7 +700,7 @@ app.post("/addpost", async (req, res) => {
         currency,
         priceTo,
         position,
-        ngay_hethan
+        deadline
     } = req.body;
     console.log(priceTo)
     console.log(currency)
@@ -729,7 +729,7 @@ app.post("/addpost", async (req, res) => {
         currency,
         position,
         new Date(),
-        ngay_hethan
+        deadline
     ])
         .then(() => {
             res.status(200).json({ message: 'Post created successfully', data: req.body });
