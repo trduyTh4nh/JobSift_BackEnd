@@ -377,6 +377,7 @@ app.post('/deletecv/:idcv', (req, res) => {
     const idcv = req.params.idcv
 
     const deletecv = `DELETE FROM cv WHERE id_cv = ${idcv}`
+
 })
 
 
@@ -423,14 +424,7 @@ app.post('/cvcount', async (req, res) => {
         res.status(500).send({ error: 500, msg: 'ERROR AT /cvcount', callStack: e })
     })
 })
-//sekeleton:
-/*
-    {
-        id_cv: Number,
-        id_post: Number,
-        id_user: Number
-    }
-*/
+
 
 app.post('/apply', async (req, res) => {
     var application = req.body;
@@ -1037,7 +1031,7 @@ app.post('/popularjob', async (req, res) => {
         SELECT * 
         FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd, loai_cong_viec l, vi_tri v 
         WHERE views > 1000
-        and p.id_ntd = ntd.id_ntd and ntd.id_dn = dn.id_dn and l.id_loai = p.nganh_nghe and v.id_vitri = p.position and p.ngay_hethan > CURRENT_DATE
+        and p.id_ntd = ntd.id_ntd and ntd.id_dn = dn.id_dn and l.id_loai = p.nganh_nghe and v.id_vitri = p.position 
         `)
 
 
@@ -1348,6 +1342,7 @@ app.post(`/getallposition`, (req, res) => {
             })
     }
 })
+
 app.post('/getallnn', (req, res) => {
     const getAllPosition = `SELECT * FROM loai_cong_viec`
         db.many(getAllPosition)
@@ -1361,6 +1356,81 @@ app.post('/getallnn', (req, res) => {
                 }
             })
 })
+
+
+app.post('/getSkill/:idcv', (req, res) => {
+    const idcv = req.params.idcv;
+
+    const getWK = `SELECT * FROM working_experience_cv wk
+    WHERE wk.id_cv = ${idcv}`
+
+    db.manyOrNone(getWK)
+        .then((wk) => {
+            const workingE = wk;
+
+            const getAC = `SELECT * FROM activity_cv ac
+            WHERE  ac.id_cv = ${idcv}`
+
+            db.manyOrNone(getAC)
+                .then((ac) => {
+                    const Ac = ac
+
+                    const getCer = `SELECT * FROM certificate_cv cer 
+                    WHERE cer.id_cv = ${idcv}`
+
+                    db.manyOrNone(getCer)
+                        .then((cer) => {
+                            const certifi = cer
+                            const getEdu = `SELECT * FROM education edu
+                            WHERE edu.id_cv = ${idcv}`
+                            db.manyOrNone(getEdu)
+                                .then((edu) => {
+                                    const educate = edu
+
+                                    const getLang = `SELECT * FROM language la 
+                                    WHERE la.id_cv = ${idcv}`
+
+                                    db.manyOrNone(getLang)
+                                        .then((lang) => {
+                                            const language = lang
+
+                                            res.status(200).json({
+                                                WkCV: workingE,
+                                                ACCV: Ac,
+                                                CerCv: certifi,
+                                                EduCv: educate,
+                                                LangCV: language
+                                            })
+
+                                        })
+                                        .catch((error) => {
+                                            console.log("ERROR at line: " + error)
+                                            res.status(500).json({ error: error })
+                                        })
+                                })
+                                .catch((error) => {
+                                    console.log("ERROR at line: " + error)
+                                    res.status(500).json({ error: error })
+                                })
+
+                        })
+                        .catch((error) => {
+                            console.log("ERROR at line: " + error)
+                            res.status(500).json({ error: error })
+                        })
+                })
+                .catch((error) => {
+                    console.log("ERROR at line : " + error)
+                    res.status(500).json({ error: error })
+                })
+        })
+        .catch((error) => {
+            console.log("ERROR at line : " + error)
+            res.status(500).json({ error: error })
+        })
+})
+
+
 app.listen(port, () => {
     console.log(`App running on port ${port}`);
 });
