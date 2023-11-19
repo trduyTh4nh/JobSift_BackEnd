@@ -47,7 +47,7 @@ const getPostNTD = (bd) => {
     return new Promise((res, rej) => {
         pool.query(`SELECT p.*, dn.logo_dn, l.ten_loai, v.ten_vitri
         FROM post p, nha_tuyen_dung ntd, doanh_nghiep dn, loai_cong_viec l, vi_tri v
-        WHERE ntd.id_ntd = ${bd} AND ntd.id_dn = dn.id_dn AND p.nganh_nghe = l.id_loai AND p.position = v.id_vitri;
+        WHERE p.id_ntd = ${bd} AND ntd.id_dn = dn.id_dn AND p.nganh_nghe = l.id_loai AND p.position = v.id_vitri AND p.id_ntd = ntd.id_ntd;
         `, (e, r) => {
             if (e) {
                 rej(e)

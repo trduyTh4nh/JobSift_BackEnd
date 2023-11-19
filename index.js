@@ -816,8 +816,13 @@ app.post('/loginntd', async (req, res) => {
 
     try {
         const user = await db.oneOrNone(`SELECT * FROM users u, nha_tuyen_dung ntd WHERE ntd.id_user = u.id_user and email = '${email}' and password = '${password}'`);
-
+        const adminuser = await db.oneOrNone(`SELECT * FROM users u, admin ntd WHERE ntd.id_user = u.id_user and email = '${email}' and password = '${password}';`);
+        
         if (!user) {
+            if(adminuser){
+                res.status(200).json({ message: 'Login thành công!', checkUser: false, user: adminuser });
+                return
+            }
             res.status(401).json({ message: 'Tài khoản mật khẩu không chính xác!' });
             return;
         }
