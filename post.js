@@ -6,6 +6,32 @@ const pool = new Pool({
     password: '1234',
     port: 5432
 })
+const setStatus = (bd) => {
+    return new Promise((res, rej) => {
+        pool.query(`UPDATE don_ung_tien
+                    SET status = ${bd.status}
+                    WHERE id_recruit = ${bd.id_recruit}`, (e, r) => {
+            if (e) {
+                rej(e)
+                return
+            }
+            res(200)
+        })
+    })
+}
+const getApplicationByIdPost = (bd) => {
+    return new Promise((res, rej) => {
+        pool.query(`SELECT p.*, u.full_name, u.profile_picture, d.status, cv.id_cv, l.ten_loai, v.ten_vitri, d.id_recruit
+        FROM don_ung_tien d, users u, post p, cv, loai_cong_viec l, vi_tri v
+        WHERE d.id_user = u.id_user AND d.id_post = p.id_post AND p.id_post = ${bd} AND cv.id_cv = d.idcv AND p.nganh_nghe = l.id_loai AND p.position = v.id_vitri;`, (e, r) => {
+            if (e) {
+                rej(e)
+                return
+            }
+            res(r.rows)
+        })
+    })
+}
 const postReport = (bd) => {
     return new Promise((res, rej) => {
         pool.query(`INSERT INTO report (reason, other_reason, id_user, id_post) VALUES ('${bd.reason}', '${bd.other_reason}', ${bd.id_user}, ${bd.id_post})`, (e, r) => {
@@ -19,7 +45,9 @@ const postReport = (bd) => {
 }
 const getPostNTD = (bd) => {
     return new Promise((res, rej) => {
-        pool.query(`SELECT p.*, dn.logo_dn FROM post p, nha_tuyen_dung ntd, doanh_nghiep dn WHERE ntd.id_ntd = ${bd} AND ntd.id_dn = dn.id_dn;
+        pool.query(`SELECT p.*, dn.logo_dn, l.ten_loai, v.ten_vitri
+        FROM post p, nha_tuyen_dung ntd, doanh_nghiep dn, loai_cong_viec l, vi_tri v
+        WHERE ntd.id_ntd = ${bd} AND ntd.id_dn = dn.id_dn AND p.nganh_nghe = l.id_loai AND p.position = v.id_vitri;
         `, (e, r) => {
             if (e) {
                 rej(e)
@@ -72,7 +100,7 @@ const getApplication = (bd) => {
         pool.query(`SELECT d.id_recruit, p.id_ntd, d.status, p.tieu_de, p.nganh_nghe, p.position, dn.name_dn, cv.*, d.date_ut
         FROM don_ung_tien d, post p, cv, nha_tuyen_dung ntd, doanh_nghiep dn
         WHERE d.id_post = p.id_post AND d.idcv = cv.id_cv AND d.id_user = ${bd.id_user} AND p.id_ntd = ntd.id_ntd AND ntd.id_dn = dn.id_dn
-        ORDER BY status;`, (e, r) => {
+        ORDER BY status desc, d.date_ut;`, (e, r) => {
             if (e) {
                 rej(e)
                 return
@@ -449,7 +477,7 @@ const checkGC = (bd) => {
 }
 const apply = (application) => {
     return new Promise((resolve, reject) => {
-        pool.query(`INSERT INTO don_ung_tien (status, idcv, id_post, id_user) values (0, ${application.idcv}, ${application.id_post}, ${application.id_user});`, (e, r) => {
+        pool.query(`INSERT INTO don_ung_tien (status, idcv, id_post, id_user, date_ut) values (0, ${application.idcv}, ${application.id_post}, ${application.id_user}, '${(new Date()).toISOString()}');`, (e, r) => {
             if (e) {
                 reject(e)
             }
@@ -557,5 +585,7 @@ module.exports = {
     getReport,
     postReport,
     getPostNTD,
-    getCompanyStatistics
+    getCompanyStatistics,
+    getApplicationByIdPost,
+    setStatus
 }

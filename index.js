@@ -139,7 +139,15 @@ io.listen(3002)
 //         return res.status(500).json({ error: error.message || 'Internal server error' });
 //     }
 // });
-
+app.post('/status', (req,res) => {
+    const bd = req.body
+    post.setStatus(bd).then(e => {
+        res.status(200).send({msg: 'Success'})
+    }).catch(e => {
+        console.log(`ERROR in /status: ${e}`)
+        res.status(500).send({ status: 500, at: `ERROR in /status`, e: e })
+    })
+})
 app.post('/buykc', (req, res) => {
     const { iduser, kc } = req.body
 
@@ -437,6 +445,13 @@ app.post('/application', async (req, res) => {
             console.log(`ERROR AT /application ${e}`)
             res.status(500).send({ error: 500, msg: 'ERROR AT /application', callStack: e })
         })
+    } else if(!id_user) {
+        post.getApplicationByIdPost(id_post).then(e => {
+            res.status(200).send(e)
+        }).catch(e => {
+            console.log(`ERROR AT /application ${e}`)
+            res.status(500).send({ error: 500, msg: 'ERROR AT /application', callStack: e })
+        })
     } else {
         post.getApplyWithIdPostIdUser(id_post, id_user).then(e => {
             res.status(200).send(e[0])
@@ -678,15 +693,16 @@ app.post("/addpost", async (req, res) => {
         id_user,
         currency,
         priceTo,
-        position
+        position,
+        deadline
     } = req.body;
     console.log(priceTo)
     console.log(currency)
     console.log("Data đã lấy: " + JSON.stringify(req.body))
 
     const insertQR = `
-      INSERT INTO "post" (tieu_de, nganh_nghe, soluong_nguoi, job_category, dia_chi, job_time, gioi_tinh, luong, trinh_do_hoc_van, kinh_nghiem_yeu_cau, phuc_loi, note, id_ntd, highest_salary, currency, position, ngay_post)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      INSERT INTO "post" (tieu_de, nganh_nghe, soluong_nguoi, job_category, dia_chi, job_time, gioi_tinh, luong, trinh_do_hoc_van, kinh_nghiem_yeu_cau, phuc_loi, note, id_ntd, highest_salary, currency, position, ngay_post, ngay_hethan)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
   `;
 
     db.none(insertQR, [
@@ -706,7 +722,8 @@ app.post("/addpost", async (req, res) => {
         priceTo,
         currency,
         position,
-        new Date()
+        new Date(),
+        deadline
     ])
         .then(() => {
             res.status(200).json({ message: 'Post created successfully', data: req.body });
@@ -1321,6 +1338,21 @@ app.post(`/getallposition`, (req, res) => {
     }
 })
 
+app.post('/getallnn', (req, res) => {
+    const getAllPosition = `SELECT * FROM loai_cong_viec`
+        db.many(getAllPosition)
+            .then((e) => {
+                res.status(200).json(e)
+            })
+            .catch((error) => {
+                {
+                    console.log("ERROR at line 1304: " + error)
+                    res.status(500).json({ error: error })
+                }
+            })
+})
+
+
 app.post('/getSkill/:idcv', (req, res) => {
     const idcv = req.params.idcv;
 
@@ -1392,6 +1424,7 @@ app.post('/getSkill/:idcv', (req, res) => {
             res.status(500).json({ error: error })
         })
 })
+
 
 app.listen(port, () => {
     console.log(`App running on port ${port}`);
