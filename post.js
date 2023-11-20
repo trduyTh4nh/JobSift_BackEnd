@@ -368,6 +368,50 @@ const getCompanyStatistics = (id_enter) => {
             })
     })
 }
+
+const getAdminStatistics = (id_enter) => {
+    return new Promise((resolve, reject) => {
+        var data = {};
+        pool.query(`SELECT COUNT(p.*) as count
+        FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd
+        WHERE p.id_ntd = ntd.id_ntd AND ntd.id_dn = dn.id_dn`, (error, result) => {
+            if(error){
+                reject(error)
+                return
+            }
+            data = {...data, count: result.rows[0].count}
+            
+        })
+            pool.query(`SELECT COUNT(dut.*) as count_dut
+            FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd, don_ung_tien dut
+            WHERE p.id_ntd = ntd.id_ntd AND ntd.id_dn = dn.id_dn AND dut.id_post = p.id_post;`, (error, result) => {
+                if (error) {
+                    reject(error)
+                    return
+                }
+                data = {...data, count_dut: result.rows[0].count_dut}
+                pool.query(`SELECT count(*) AS count_fl
+                FROM follow f
+                WHERE id_dn = ${id_enter};`, (error, result) => {
+                    if (error) {
+                        reject(error)
+                        return
+                    }
+                    data = {...data, count_fl: result.rows[0].count_fl}
+                    pool.query(`SELECT COUNT(dut.*) as count_approval
+                    FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd, don_ung_tien dut
+                    WHERE p.id_ntd = ntd.id_ntd AND ntd.id_dn = dn.id_dn AND dut.id_post = p.id_post AND dut.status != 0;`, (error, result) => {
+                        if(error){
+                            reject(error)
+                            return
+                        }
+                        data = {...data, count_approval: result.rows[0].count_approval}
+                        resolve(data)
+                    })
+                })
+            })
+    })
+}
 const updateUser = async (user) => {
     return new Promise((resolve, reject) => {
         if (!user.id_user) {
@@ -459,7 +503,6 @@ const getUV = () => {
     })
 }
 const checkUngVien = (id_user) => {
-
     return new Promise((resolve, reject) => {
         pool.query(`SELECT * FROM ung_vien WHERE id_user = ${id_user};`, (error, result) => {
             if (error) {
@@ -587,5 +630,6 @@ module.exports = {
     getPostNTD,
     getCompanyStatistics,
     getApplicationByIdPost,
-    setStatus
+    setStatus,
+    getAdminStatistics
 }
