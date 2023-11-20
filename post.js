@@ -21,7 +21,7 @@ const getNotification = (bd) => {
 }
 const postNotification = (bd) => {
     return new Promise((res, rej) => {
-        pool.query(`INSERT INTO notification (content, time_ntf, id_ntd, is_chat) VALUES ('${bd.content}', '${(new Date()).toISOString()}', ${bd.id_ntd}, false)`, (e, r) => {
+        pool.query(`INSERT INTO notification (content, time_ntf, id_ntd, is_chat) VALUES ('${bd.content}', CURRENT_DATE, ${bd.id_ntd}, false)`, (e, r) => {
             if (e) {
                 rej(e)
                 return
