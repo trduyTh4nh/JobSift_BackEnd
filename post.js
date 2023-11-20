@@ -124,9 +124,9 @@ const getDiamondCount = (bd) => {
 }
 const getApplication = (bd) => {
     return new Promise((res, rej) => {
-        pool.query(`SELECT d.id_recruit, p.id_ntd, d.status, p.tieu_de, p.nganh_nghe, p.position, dn.name_dn, cv.*, d.date_ut
-        FROM don_ung_tien d, post p, cv, nha_tuyen_dung ntd, doanh_nghiep dn
-        WHERE d.id_post = p.id_post AND d.idcv = cv.id_cv AND d.id_user = ${bd.id_user} AND p.id_ntd = ntd.id_ntd AND ntd.id_dn = dn.id_dn
+        pool.query(`SELECT d.id_recruit, p.id_ntd, d.status, p.tieu_de, p.nganh_nghe, p.position, dn.name_dn, cv.*, d.date_ut, l.ten_loai
+        FROM don_ung_tien d, post p, cv, nha_tuyen_dung ntd, doanh_nghiep dn, loai_cong_viec l
+        WHERE d.id_post = p.id_post AND d.idcv = cv.id_cv AND d.id_user = ${bd.id_user} AND p.id_ntd = ntd.id_ntd AND ntd.id_dn = dn.id_dn AND p.nganh_nghe = l.id_loai
         ORDER BY status desc, d.date_ut;`, (e, r) => {
             if (e) {
                 rej(e)
@@ -464,9 +464,9 @@ const getFavourite = (id_user) => {
             reject(401)
             return
         }
-        pool.query(`SELECT p.*, yt.id_post_yt, dn.name_dn, dn.logo_dn
-        FROM post_yeu_thich yt, post p, nha_tuyen_dung n, doanh_nghiep dn
-        WHERE yt.id_job = p.id_post AND yt.id_user = ${id_user} AND p.id_ntd = n.id_ntd AND n.id_dn = dn.id_dn`, (error, result) => {
+        pool.query(`SELECT p.*, yt.id_post_yt, dn.name_dn, dn.logo_dn, l.*, v.*
+        FROM post_yeu_thich yt, post p, nha_tuyen_dung n, doanh_nghiep dn, loai_cong_viec l, vi_tri v
+        WHERE yt.id_job = p.id_post AND yt.id_user = ${id_user} AND p.id_ntd = n.id_ntd AND n.id_dn = dn.id_dn AND p.position = v.id_vitri AND p.nganh_nghe = l.id_loai`, (error, result) => {
             if (error) {
                 console.log(error)
                 reject(error)
