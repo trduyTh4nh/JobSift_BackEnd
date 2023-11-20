@@ -743,7 +743,7 @@ app.post("/addpost", async (req, res) => {
         priceTo,
         currency,
         position,
-        new Date(),
+        (new Date()).toISOString(),
         deadline
     ])
         .then(() => {
