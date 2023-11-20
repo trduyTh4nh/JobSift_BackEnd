@@ -139,17 +139,29 @@ io.listen(3002)
 //         return res.status(500).json({ error: error.message || 'Internal server error' });
 //     }
 // });
-app.post('/status', (req,res) => {
+app.post('/status', (req, res) => {
     const bd = req.body
     post.setStatus(bd).then(e => {
-        res.status(200).send({msg: 'Success'})
+        res.status(200).send({ msg: 'Success' })
     }).catch(e => {
         console.log(`ERROR in /status: ${e}`)
         res.status(500).send({ status: 500, at: `ERROR in /status`, e: e })
     })
 })
 app.post('/buykc', (req, res) => {
+
     const { iduser, kc } = req.body
+
+    var price = 0;
+    if (kc === 100) {
+        price = 199.999
+    }
+    else if (kc == 600) {
+        price = 599.999
+    }
+    else {
+        price = 999.999
+    }
 
     console.log(req.body)
 
@@ -161,8 +173,17 @@ app.post('/buykc', (req, res) => {
             const upgradeKC = `UPDATE users SET diamond_count = ${parseInt(kc) + parseInt(quantityDAM)} WHERE id_user = ${iduser}`
             db.none(upgradeKC)
                 .then((e) => {
-                    res.status(200).json({ message: "successfully!" })
-                    return
+                    const currentDate = new Date().toDateString();
+                    const insertPayment = `INSERT INTO payment (id_user, amount, amount_diamond, date_pay, descript) VALUES (${iduser}, ${price.toString()}, ${kc}, '${currentDate}', 'Bạn đã mua ${kc} với giá ${price}')`
+                    db.none(insertPayment)
+                        .then((e) => {
+                            res.status(200).json({ message: "successfully!" })
+                            return
+                        })
+                        .catch((error) => {
+                            console.log("ERROR at line 119: " + error)
+                            res.status(500).json({ error: error })
+                        })
                 })
                 .catch((error) => {
                     console.log("ERROR at line 119: " + error)
@@ -445,7 +466,7 @@ app.post('/application', async (req, res) => {
             console.log(`ERROR AT /application ${e}`)
             res.status(500).send({ error: 500, msg: 'ERROR AT /application', callStack: e })
         })
-    } else if(!id_user) {
+    } else if (!id_user) {
         post.getApplicationByIdPost(id_post).then(e => {
             res.status(200).send(e)
         }).catch(e => {
@@ -817,9 +838,9 @@ app.post('/loginntd', async (req, res) => {
     try {
         const user = await db.oneOrNone(`SELECT * FROM users u, nha_tuyen_dung ntd, doanh_nghiep dn WHERE ntd.id_user = u.id_user and ntd.id_dn = dn.id_dn AND email = '${email}' and password = '${password}';        `);
         const adminuser = await db.oneOrNone(`SELECT * FROM users u, admin ntd WHERE ntd.id_user = u.id_user and email = '${email}' and password = '${password}';`);
-        
+
         if (!user) {
-            if(adminuser){
+            if (adminuser) {
                 res.status(200).json({ message: 'Login thành công!', checkUser: false, user: adminuser });
                 return
             }
@@ -1389,16 +1410,16 @@ app.post(`/getallcurrency`, (req, res) => {
 
 app.post('/getallnn', (req, res) => {
     const getAllPosition = `SELECT * FROM loai_cong_viec`
-        db.many(getAllPosition)
-            .then((e) => {
-                res.status(200).json(e)
-            })
-            .catch((error) => {
-                {
-                    console.log("ERROR at line 1304: " + error)
-                    res.status(500).json({ error: error })
-                }
-            })
+    db.many(getAllPosition)
+        .then((e) => {
+            res.status(200).json(e)
+        })
+        .catch((error) => {
+            {
+                console.log("ERROR at line 1304: " + error)
+                res.status(500).json({ error: error })
+            }
+        })
 })
 
 
@@ -1472,6 +1493,116 @@ app.post('/getSkill/:idcv', (req, res) => {
             console.log("ERROR at line : " + error)
             res.status(500).json({ error: error })
         })
+})
+
+app.post('/majorstatitical', (req, res) => {
+
+    const { month } = req.body
+    const getSeperate = `
+    SELECT COUNT(*), ut.date_ut, ten_loai
+FROM post p
+JOIN don_ung_tien ut ON p.id_post = ut.id_post
+JOIN loai_cong_viec lcv ON p.nganh_nghe = lcv.id_loai
+WHERE EXTRACT(MONTH FROM ut.date_ut) = ${month}  
+GROUP BY ut.date_ut, ten_loai;
+    `
+
+    db.manyOrNone(getSeperate)
+        .then((result) => {
+
+            const getCate = `
+            SELECT COUNT(*), ten_loai
+FROM post p
+JOIN don_ung_tien ut ON p.id_post = ut.id_post
+JOIN loai_cong_viec lcv ON p.nganh_nghe = lcv.id_loai
+WHERE EXTRACT(MONTH FROM ut.date_ut) = ${month}
+GROUP BY ten_loai
+`
+            db.manyOrNone(getCate)
+                .then((e) => {
+                    const cate = e
+                    res.status(200).json({ result: result, cate: cate })
+                })
+                .catch((error) => {
+                    console.log("ERROR at line 1446: " + error)
+                    res.status(500).json({ error: error })
+                })
+
+
+        })
+        .catch((error) => {
+            console.log("ERROR at line 1446: " + error)
+            res.status(500).json({ error: error })
+        })
+
+})
+
+
+app.get('/admin/statistics', (req, res) => {
+    const bd = req.params.id
+    post.getAdminStatistics(bd).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.log(`ERROR in /admin/statistics/${bd}: ${e}`)
+        res.status(500).send({ status: 500, at: `ERROR in /admin/statistics/${bd}`, e: e })
+    })
+})
+
+
+app.post('/positionstatitical', (req, res) => {
+
+    const { month } = req.body
+    const getSeperate = `
+    SELECT COUNT(*), ut.date_ut, ten_vitri
+    FROM post p
+    JOIN don_ung_tien ut ON p.id_post = ut.id_post
+    JOIN vi_tri vt ON p.position = vt.id_vitri
+    WHERE EXTRACT(MONTH FROM ut.date_ut) = ${month}  
+    GROUP BY ut.date_ut, ten_vitri;
+    `
+    db.manyOrNone(getSeperate)
+        .then((result) => {
+            res.status(200).json({ result: result })
+        })
+        .catch((error) => {
+            console.log("ERROR at line 15050: " + error)
+            res.status(500).json({ error: error })
+        })
+
+})
+
+
+
+app.post('/finalcialstatitical', (req, res) => {
+
+    const { month } = req.body
+    const getSeperate = `
+    SELECT Sum(p.amount),p.date_pay, amount_diamond
+FROM payment p
+WHERE EXTRACT(MONTH FROM p.date_pay) = ${month}  
+GROUP BY p.date_pay, amount_diamond
+    `
+    db.manyOrNone(getSeperate)
+        .then((result) => {
+
+            const getSumOfMonth = `SELECT Sum(p.amount)
+            FROM payment p
+            WHERE EXTRACT(MONTH FROM p.date_pay) = ${month}`
+
+            db.oneOrNone(getSumOfMonth)
+                .then((e) => {
+                    res.status(200).json({ result: result, sumTotal: e })
+                })
+                .catch((error) => {
+                    console.log("ERROR at line 15050: " + error)
+                    res.status(500).json({ error: error })
+                })
+        })
+        .catch((error) => {
+            console.log("ERROR at line 15050: " + error)
+            res.status(500).json({ error: error })
+        })
+
 })
 
 
