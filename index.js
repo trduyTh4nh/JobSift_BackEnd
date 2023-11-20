@@ -836,7 +836,7 @@ app.post('/loginntd', async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const user = await db.oneOrNone(`SELECT * FROM users u, nha_tuyen_dung ntd WHERE ntd.id_user = u.id_user and email = '${email}' and password = '${password}'`);
+        const user = await db.oneOrNone(`SELECT * FROM users u, nha_tuyen_dung ntd, doanh_nghiep dn WHERE ntd.id_user = u.id_user and ntd.id_dn = dn.id_dn AND email = '${email}' and password = '${password}';        `);
         const adminuser = await db.oneOrNone(`SELECT * FROM users u, admin ntd WHERE ntd.id_user = u.id_user and email = '${email}' and password = '${password}';`);
 
         if (!user) {
@@ -884,10 +884,12 @@ app.post(`/search/:key`, async (req, res) => {
 
     try {
         const resultSearch = await db.many(`SELECT * 
-        FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd 
+        FROM post p, doanh_nghiep dn, nha_tuyen_dung ntd, loai_cong_viec l, vi_tri v
         WHERE LOWER(p.tieu_de) LIKE LOWER('${nameJob}%') 
         AND p.id_ntd = ntd.id_ntd 
         AND ntd.id_dn = dn.id_dn
+        AND p.position = v.id_vitri
+        AND p.nganh_nghe = l.id_loai
     `)
 
         if (!resultSearch || resultSearch.length === 0) {
@@ -915,16 +917,18 @@ app.post(`/searchfilter`, async (req, res) => {
         FROM post p
         JOIN nha_tuyen_dung ntd ON p.id_ntd = ntd.id_ntd
         JOIN doanh_nghiep dn ON ntd.id_dn = dn.id_dn
+        JOIN vi_tri vt on p.position = vt.id_vitri
+        JOIN loai_cong_viec lcv on p.nganh_nghe = lcv.id_loai
         WHERE p.tieu_de ILIKE $1
         AND dn.name_dn ILIKE $2
-        AND p.job_category ILIKE $3
-        AND p.position ILIKE $4
+        ${category == '' ? '' : 'AND p.nganh_nghe = $3'}
+        ${position == '' ? '' : 'AND p.position = $4'}
         AND p.luong BETWEEN $5 AND $6
     `, [
             `${nameJob}%`,
             `${company}%`,
-            `${category}%`,
-            `${position}%`,
+            category,
+            position,
             salaryFrom == '' ? 0 : Number(salaryFrom),
             salaryTo == '' ? 900000000 : Number(salaryTo)
         ]);
@@ -966,7 +970,28 @@ app.post(`/getcurrentstar/:iduser/:idpost`, async (req, res) => {
 
     }
 })
-
+app.get('/notify/:id', (req,res) => {
+    const iduser = req.params.id
+    post.getNotification(iduser).then(e => {
+        
+    })
+})
+app.post('/notify/post', (req, res) => {
+    post.postNotification(req.body).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.error(e)
+        res.status(500).json({ error: e })
+    })
+})
+app.post('/notify/chat', (req, res) => {
+    post.messageNotification(req.body).then(e => {
+        res.status(200).send(e)
+    }).catch(e => {
+        console.error(error)
+        res.status(500).json({ error: error })
+    })
+})
 app.post(`/getinfontd`, async (req, res) => {
     const { id_ntd, id_post } = req.body
 
@@ -1354,6 +1379,25 @@ app.post(`/getallposition`, (req, res) => {
         db.many(getAllPosition)
             .then((e) => {
                 res.status(200).json({ allPosition: e })
+            })
+            .catch((error) => {
+                {
+                    console.log("ERROR at line 1304: " + error)
+                    res.status(500).json({ error: error })
+                }
+            })
+    }
+})
+
+app.post(`/getallcurrency`, (req, res) => {
+    {
+        const getAllPosition = `
+            SELECT DISTINCT currency
+            FROM post;
+        `
+        db.many(getAllPosition)
+            .then((e) => {
+                res.status(200).json(e)
             })
             .catch((error) => {
                 {

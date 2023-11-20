@@ -6,6 +6,33 @@ const pool = new Pool({
     password: '1234',
     port: 5432
 })
+const getNotification = (bd) => {
+    return new Promise((res, rej) => {
+        pool.query(`SELECT n.*, dn.name_dn, dn.logo_dn
+        FROM notification n, follow f, nha_tuyen_dung ntd, doanh_nghiep dn
+        WHERE f.id_user = ${bd} AND ntd.id_dn = dn.id_dn AND f.id_dn = ntd.id_dn AND n.id_ntd = ntd.id_ntd`, (e, r) => {
+            if (e) {
+                rej(e)
+                return
+            }
+            res(r.rows)
+        })
+    })
+}
+const postNotification = (bd) => {
+    return new Promise((res, rej) => {
+        pool.query(`INSERT INTO notification (content, time_ntf, id_ntd, is_chat) VALUES ('${bd.content}', '${(new Date()).toISOString()}', ${bd.id_ntd}, false)`, (e, r) => {
+            if (e) {
+                rej(e)
+                return
+            }
+            res(200)
+        })
+    })
+}
+const messageNotification = (bd) => {
+
+}
 const setStatus = (bd) => {
     return new Promise((res, rej) => {
         pool.query(`UPDATE don_ung_tien
@@ -631,5 +658,8 @@ module.exports = {
     getCompanyStatistics,
     getApplicationByIdPost,
     setStatus,
+    postNotification,
+    messageNotification,
+    getNotification,
     getAdminStatistics
 }
