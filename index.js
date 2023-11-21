@@ -1369,6 +1369,7 @@ app.post('/removecv/:idcv', (req, res) => {
             res.status(200).json({ message: "Successfully!" })
         })
         .catch((error) => {
+            console.log('Erro at removecv ' + error)
             res.status(500).json({ error: error })
         })
 })
