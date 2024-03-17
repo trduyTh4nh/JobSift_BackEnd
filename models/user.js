@@ -42,7 +42,7 @@ app.post("/adduser", async (req, res) => {
     `;
 
 
-    db.none(insertQR, [email, password, phone, full_name, profile_picture, diamond_count])
+    db.none(insertQR, [email, password, phone, full_name, profile_picture,  0])
         .then(() => {
          
 

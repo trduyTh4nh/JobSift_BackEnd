@@ -12,6 +12,8 @@ const pgp = require('pg-promise')();
 const userSignup = require('./models/user');
 const { errors, as } = require('pg-promise');
 const { stat } = require('fs');
+const { cwd } = require('process');
+const e = require('express');
 const db = pgp({
     host: 'localhost',
     port: 5432,
@@ -55,7 +57,28 @@ const io = require('socket.io')(server, {
         credentials: true
     },
 })
+app.post('/payment-sec', async (req, res) => {
+    const { price } = req.body;
+    const customer = await stripe.customers.create();
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+        { customer: customer.id },
+        { apiVersion: '2023-10-16' }
+    );
+    const amountInVND = price; // Số tiền VND
+    const amountInVNDInCents = Math.round(amountInVND * 100); // Chuyển đổi VND sang cent và làm tròn
 
+
+    // Tiếp tục xử lý paymentIntent với amountInVNDInCents
+    const paymentIntent = await stripe.paymentIntents.create({
+        amount: amountInVNDInCents,
+        currency: 'vnd',
+        customer: customer.id,
+        automatic_payment_methods: {
+            enabled: true,
+        },
+    });
+    res.status(200).json(paymentIntent.client_secret)
+})
 
 app.post('/payment-sheet', async (req, res) => {
     const { price } = req.body;
@@ -105,11 +128,7 @@ app.post('/payment-sheet', async (req, res) => {
     // });
 });
 
-// app.use(userSignup)
 
-// app.use(bodyParser.text({
-//     type: 'text/plain'
-// }));
 io.on('connection', (socket) => {
     console.log(`Socket: ${socket.id}`)
     socket.emit('id', socket.id)
@@ -148,9 +167,63 @@ app.post('/status', (req, res) => {
         res.status(500).send({ status: 500, at: `ERROR in /status`, e: e })
     })
 })
+
+app.post('/ntdmuckc', (req, res) => {
+    const { iduser } = req.body;
+    console.log("ID USER ĐÃ NHẬN: " + iduser)
+
+    const mucKC = `UPDATE users SET diamond_count = diamond_count + 100 WHERE id_user = ${iduser}`;
+    db.none(mucKC)
+        .then((e) => {
+            console.log(e)
+
+            res.status(200).json({ message: "successfully!" })
+            return
+        })
+        .catch((error) => {
+            res.status(500).json({ error: error })
+            console.log("ERROR at 184: " + error)
+        })
+
+})
+
+app.post('/editinfodn/:iddn', (req, res) => {
+    const iddn = req.params.iddn
+    const { namedn, address, emaildn, description, imglogo_firebase } = req.body
+
+    console.log("body: " + req.body)
+    console.log("iddn: " + iddn)
+
+    const editInfor = `UPDATE doanh_nghiep 
+    SET 
+    name_dn = '${namedn}', 
+    email_dn = '${emaildn}',
+    logo_dn  = '${imglogo_firebase}',
+    address = '${address}',
+    description = '${description}'
+    WHERE id_dn = ${iddn}`
+    // const findDoanhNghiep = `SELECT ntd.id_dn
+    // FROM doanh_nghiep dn, users u, nha_tuyen_dung ntd
+    // WHERE dn.id_dn = ntd.id_dn and u.id_user = ntd.id_user and u.id_user = ${id_user}`
+    db.oneOrNone(editInfor)
+        .then((e) => {
+            console.log(e)
+            res.status(200).json({ message: "Update thành công thông tin doanh nghiệp" })
+        })
+        .catch((error) => {
+            console.log("ERROR at line: 204" + error)
+            res.status(500).json({ error: error })
+        })
+
+
+})
+
 app.post('/buykc', (req, res) => {
 
+
     const { iduser, kc } = req.body
+
+    console.log('KC backend: ', kc)
 
     var price = 0;
     if (kc === 100) {
@@ -170,8 +243,10 @@ app.post('/buykc', (req, res) => {
     db.oneOrNone(getKCcurrent)
         .then((e) => {
             const quantityDAM = e.diamond_count;
-            const upgradeKC = `UPDATE users SET diamond_count = ${parseInt(kc) + parseInt(quantityDAM)} WHERE id_user = ${iduser}`
-            db.none(upgradeKC)
+            const quantityWantoBuy = parseInt(kc)
+            console.log('Quantity diamond you want to buy: ', quantityWantoBuy)
+            const upgradeKC = `UPDATE users SET diamond_count = ${quantityWantoBuy + parseInt(quantityDAM)} WHERE id_user = ${iduser}`
+            db.oneOrNone(upgradeKC)
                 .then((e) => {
                     const currentDate = new Date().toDateString();
                     const insertPayment = `INSERT INTO payment (id_user, amount, amount_diamond, date_pay, descript) VALUES (${iduser}, ${price.toString()}, ${kc}, '${currentDate}', 'Bạn đã mua ${kc} với giá ${price}')`
@@ -186,7 +261,7 @@ app.post('/buykc', (req, res) => {
                         })
                 })
                 .catch((error) => {
-                    console.log("ERROR at line 119: " + error)
+                    console.log("ERROR at line 119 - mybug: " + error)
                     res.status(500).json({ error: error })
 
                 })
@@ -381,10 +456,10 @@ app.post('/getallcv/:iduser', (req, res) => {
 
     db.many(query)
         .then((result) => {
-            if (result.length <= 0) {
-                res.status(401).json({ message: "[401] - line 204" })
-                return
-            }
+            // if (result.length <= 0) {
+            //     res.status(401).json({ message: "[401] - line 204" })
+            //     return
+            // }
             res.status(200).json({ result: result })
         })
         .catch((error) => {
@@ -677,7 +752,7 @@ app.post("/adduser", async (req, res) => {
     `;
 
 
-    db.oneOrNone(insertQR, [email, password, phone, full_name, profile_picture, diamond_count])
+    db.oneOrNone(insertQR, [email, password, phone, full_name, profile_picture, 0])
         .then((e) => {
             console.log(JSON.stringify(e))
             const insertUV = `INSERT INTO ung_vien (id_user) VALUES (${e.id_user})`
@@ -970,10 +1045,10 @@ app.post(`/getcurrentstar/:iduser/:idpost`, async (req, res) => {
 
     }
 })
-app.get('/notify/:id', (req,res) => {
+app.get('/notify/:id', (req, res) => {
     const iduser = req.params.id
     post.getNotification(iduser).then(e => {
-        
+
     })
 })
 app.post('/notify/post', (req, res) => {
